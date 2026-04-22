@@ -1,5 +1,6 @@
-from inventory.models import UserProfile
+
 from django.contrib.auth.models import User
+from inventory.models import UserProfile
 import os
 import django
 

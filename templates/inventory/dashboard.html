@@ -1,12 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — Aristoclean{% endblock %}
+{% block title %}Dashboard - Aristoclean{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>Dashboard</h1>
+  {% if user.profile.can_operate_stock %}
   <div style="display:flex;gap:0.75rem;">
     <a href="{% url 'stock_receive' %}" class="btn btn-secondary btn-sm">+ Receive Stock</a>
     <a href="{% url 'issue_stock' %}" class="btn btn-primary btn-sm">+ Issue Stock</a>
   </div>
+  {% endif %}
 </div>
 
 <div class="stats-grid">
@@ -26,8 +28,8 @@
 
 {% if low_stock_count > 0 %}
 <div class="alert alert-warning">
-  ⚠ {{ low_stock_count }} item{{ low_stock_count|pluralize }} at or below reorder level.
-  <a href="{% url 'stock_list' %}" style="font-weight:600;">View stock →</a>
+  {{ low_stock_count }} item{{ low_stock_count|pluralize }} at or below reorder level.
+  <a href="{% url 'stock_list' %}" style="font-weight:600;">View stock</a>
 </div>
 {% endif %}
 
@@ -67,14 +69,21 @@
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">No items yet. <a href="{% url 'stock_receive' %}">Receive stock →</a></td></tr>
+          <tr>
+            <td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">
+              No items yet.
+              {% if user.profile.can_operate_stock %}
+              <a href="{% url 'stock_receive' %}">Receive stock</a>
+              {% endif %}
+            </td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% if stock_data %}
     <div style="margin-top:1rem;text-align:right">
-      <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">Full stock view →</a>
+      <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">Full stock view</a>
     </div>
     {% endif %}
   </div>
@@ -90,7 +99,7 @@
         <span style="font-size:0.75rem;color:var(--muted)">{{ batch.issued_at }}</span>
       </div>
       <div style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem">
-        {{ batch.location.name }} · {{ batch.line_count }} item{{ batch.line_count|pluralize }}
+        {{ batch.location.name }} - {{ batch.line_count }} item{{ batch.line_count|pluralize }}
       </div>
     </div>
     {% empty %}
@@ -98,7 +107,7 @@
     {% endfor %}
     {% if recent_batches %}
     <div style="margin-top:1rem">
-      <a href="{% url 'receipts_list' %}" class="btn btn-secondary btn-sm" style="width:100%;text-align:center;">All receipts →</a>
+      <a href="{% url 'receipts_list' %}" class="btn btn-secondary btn-sm" style="width:100%;text-align:center;">All receipts</a>
     </div>
     {% endif %}
   </div>

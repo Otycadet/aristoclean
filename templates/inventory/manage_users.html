@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Manage Users - Aristoclean{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Manage Users</h1>
+  <div style="display:flex;gap:0.75rem;">
+    <a href="{% url 'manage_items' %}" class="btn btn-secondary btn-sm">Items</a>
+    <a href="{% url 'manage_locations' %}" class="btn btn-secondary btn-sm">Locations</a>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;align-items:start;">
+  <div class="card">
+    <div class="card-title">Add User</div>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      {% if create_form.non_field_errors %}
+      <div class="alert alert-error">{{ create_form.non_field_errors.0 }}</div>
+      {% endif %}
+      {% for field in create_form %}
+      <div class="form-group">
+        <label>{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ field.errors.0 }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary" style="width:100%">Create User</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-title">Roles</div>
+      <div style="color:var(--muted);font-size:0.82rem;font-family:'Helvetica Neue',Arial,sans-serif;">
+        Viewer can only see dashboard, stock, and receipts. Store Keeper can also receive and issue stock. Manager can also access reports and all management pages.
+      </div>
+    </div>
+
+    {% for row in user_rows %}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;">
+        <div>
+          <div class="card-title" style="margin-bottom:0.25rem;">{{ row.user.username }}</div>
+          <div style="font-size:0.85rem;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif;">
+            {% if row.user.get_full_name %}
+              {{ row.user.get_full_name }}
+            {% else %}
+              No name set
+            {% endif %}
+          </div>
+        </div>
+        <div>
+          {% if row.user.is_active %}
+          <span class="badge badge-ok">Active</span>
+          {% else %}
+          <span class="badge badge-danger">Inactive</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update">
+        <input type="hidden" name="user_id" value="{{ row.user.id }}">
+        {% if row.form.non_field_errors %}
+        <div class="alert alert-error">{{ row.form.non_field_errors.0 }}</div>
+        {% endif %}
+        <div class="form-row">
+          <div class="form-group">
+            <label>{{ row.form.first_name.label }}</label>
+            {{ row.form.first_name }}
+            {% if row.form.first_name.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.first_name.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label>{{ row.form.last_name.label }}</label>
+            {{ row.form.last_name }}
+            {% if row.form.last_name.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.last_name.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label>{{ row.form.email.label }}</label>
+            {{ row.form.email }}
+            {% if row.form.email.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.email.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label>{{ row.form.role.label }}</label>
+            {{ row.form.role }}
+            {% if row.form.role.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.role.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label>{{ row.form.new_password.label }}</label>
+            {{ row.form.new_password }}
+            {% if row.form.new_password.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.new_password.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label>{{ row.form.active.label }}</label>
+            <div style="padding-top:0.65rem;font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.85rem;">
+              {{ row.form.active }} <span style="margin-left:0.35rem;">Active account</span>
+            </div>
+            {% if row.form.active.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.active.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Save User</button>
+      </form>
+    </div>
+    {% empty %}
+    <div class="card">
+      <div style="color:var(--muted);text-align:center;">No users found.</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

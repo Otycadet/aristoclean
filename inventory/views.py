@@ -4,25 +4,27 @@ from datetime import date
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.models import User
 from django.db import models as db_models
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
-from django.views import View
 
 from .forms import (
     DeliveryHeaderForm,
     IssueBatchHeaderForm,
-    IssueLineForm,
     ItemForm,
     LocationForm,
     ReportFilterForm,
-    StockEntryLineForm,
+    UserCreateForm,
+    UserUpdateForm,
 )
-from .models import DistributionLine, IssueBatch, Item, Location, StockEntry, UserProfile
-from .permissions import ManagerRequiredMixin, manager_required
+from .models import DistributionLine, IssueBatch, Item, Location, UserProfile
+from .permissions import (
+    get_user_profile,
+    manager_required,
+    stock_operator_required,
+)
 
 
 # ── Dashboard ──────────────────────────────────────────────────────────────
@@ -73,6 +75,7 @@ def stock_list(request):
 
 
 @login_required
+@stock_operator_required
 def stock_receive(request):
     """Multi-item incoming delivery form."""
     header_form = DeliveryHeaderForm(request.POST or None, initial={"received_at": date.today()})
@@ -170,6 +173,7 @@ def _parse_delivery_lines(post_data):
 # ── Issue stock ────────────────────────────────────────────────────────────
 
 @login_required
+@stock_operator_required
 def issue_stock(request):
     header_form = IssueBatchHeaderForm(request.POST or None, initial={"issued_at": date.today()})
     error = None
@@ -317,6 +321,7 @@ def receipt_detail(request, receipt_number):
 # ── Reports ────────────────────────────────────────────────────────────────
 
 @login_required
+@manager_required
 def reports(request):
     form = ReportFilterForm(request.GET or None)
     summary_rows = []
@@ -385,6 +390,7 @@ def reports(request):
 
 
 @login_required
+@manager_required
 def export_csv(request):
     """Export stock snapshot as CSV."""
     response = HttpResponse(content_type="text/csv")
@@ -408,6 +414,7 @@ def export_csv(request):
 
 
 @login_required
+@manager_required
 def export_report_csv(request):
     """Export monthly distribution detail as CSV."""
     form = ReportFilterForm(request.GET)
@@ -485,6 +492,64 @@ def manage_locations(request):
         return redirect("manage_locations")
     return render(request, "inventory/manage_locations.html", {
         "locations": locations, "form": form
+    })
+
+
+@login_required
+@manager_required
+def manage_users(request):
+    create_form = UserCreateForm(prefix="create")
+    target_user_id = None
+    target_form = None
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create":
+            create_form = UserCreateForm(request.POST, prefix="create")
+            if create_form.is_valid():
+                user = create_form.save()
+                messages.success(request, f"Added user {user.username}.")
+                return redirect("manage_users")
+        elif action == "update":
+            target_user_id = request.POST.get("user_id")
+            target_user = get_object_or_404(User, pk=target_user_id)
+            target_form = UserUpdateForm(
+                request.POST,
+                instance=target_user,
+                prefix=f"user-{target_user.pk}",
+            )
+            if target_form.is_valid():
+                new_role = target_form.cleaned_data["role"]
+                new_active = target_form.cleaned_data["active"]
+                active_manager_count = UserProfile.objects.filter(
+                    role=UserProfile.ROLE_MANAGER,
+                    user__is_active=True,
+                ).count()
+
+                if target_user == request.user and (new_role != UserProfile.ROLE_MANAGER or not new_active):
+                    target_form.add_error(None, "You cannot remove your own manager access or deactivate yourself.")
+                elif (
+                    get_user_profile(target_user).is_manager
+                    and active_manager_count == 1
+                    and (new_role != UserProfile.ROLE_MANAGER or not new_active)
+                ):
+                    target_form.add_error(None, "At least one active manager must remain in the system.")
+                else:
+                    target_form.save()
+                    messages.success(request, f"Updated user {target_user.username}.")
+                    return redirect("manage_users")
+
+    user_rows = []
+    for user in User.objects.select_related("profile").order_by("username"):
+        form = target_form if target_form is not None and str(user.pk) == str(target_user_id) else UserUpdateForm(
+            instance=user,
+            prefix=f"user-{user.pk}",
+        )
+        user_rows.append({"user": user, "form": form})
+
+    return render(request, "inventory/manage_users.html", {
+        "create_form": create_form,
+        "user_rows": user_rows,
     })
 
 

@@ -1,6 +1,7 @@
 from django import forms
+from django.contrib.auth.models import User
 from django.utils import timezone
-from .models import Item, Location, StockEntry, IssueBatch, DistributionLine
+from .models import Item, Location, UserProfile
 
 
 # ── Stock / Incoming delivery ──────────────────────────────────────────────
@@ -73,3 +74,77 @@ class ReportFilterForm(forms.Form):
             for loc in Location.objects.filter(active=True).order_by("name")
         ]
         self.fields["location"].choices = location_choices
+
+
+class UserCreateForm(forms.ModelForm):
+    role = forms.ChoiceField(choices=UserProfile.ROLE_CHOICES)
+    password1 = forms.CharField(widget=forms.PasswordInput, label="Password")
+    password2 = forms.CharField(widget=forms.PasswordInput, label="Confirm password")
+    active = forms.BooleanField(required=False, initial=True, label="Can sign in")
+
+    class Meta:
+        model = User
+        fields = ["username", "first_name", "last_name", "email"]
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("A user with this username already exists.")
+        return username
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if (
+            cleaned_data.get("password1")
+            and cleaned_data.get("password2")
+            and cleaned_data["password1"] != cleaned_data["password2"]
+        ):
+            self.add_error("password2", "Passwords do not match.")
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.username = self.cleaned_data["username"].strip()
+        user.is_active = self.cleaned_data["active"]
+        user.is_staff = False
+        user.is_superuser = False
+        user.set_password(self.cleaned_data["password1"])
+        if commit:
+            user.save()
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            profile.role = self.cleaned_data["role"]
+            profile.save()
+        return user
+
+
+class UserUpdateForm(forms.ModelForm):
+    role = forms.ChoiceField(choices=UserProfile.ROLE_CHOICES)
+    active = forms.BooleanField(required=False, label="Can sign in")
+    new_password = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        label="Reset password",
+    )
+
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        profile = getattr(self.instance, "profile", None)
+        self.fields["role"].initial = getattr(profile, "role", UserProfile.ROLE_STOREKEEPER)
+        self.fields["active"].initial = self.instance.is_active
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.is_active = self.cleaned_data["active"]
+        if commit:
+            user.save()
+            if self.cleaned_data.get("new_password"):
+                user.set_password(self.cleaned_data["new_password"])
+                user.save(update_fields=["password"])
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            profile.role = self.cleaned_data["role"]
+            profile.save()
+        return user

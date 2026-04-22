@@ -1,11 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Stock — Aristoclean{% endblock %}
+{% block title %}Stock - Aristoclean{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>Stock Levels</h1>
   <div style="display:flex;gap:0.75rem;">
+    {% if user.profile.is_manager %}
     <a href="{% url 'export_stock_csv' %}" class="btn btn-secondary btn-sm">Export CSV</a>
+    {% endif %}
+    {% if user.profile.can_operate_stock %}
     <a href="{% url 'stock_receive' %}" class="btn btn-primary btn-sm">+ Receive Delivery</a>
+    {% endif %}
   </div>
 </div>
 
@@ -44,9 +48,14 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted)">
-          No items yet. <a href="{% url 'stock_receive' %}">Record your first delivery →</a>
-        </td></tr>
+        <tr>
+          <td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted)">
+            No items yet.
+            {% if user.profile.can_operate_stock %}
+            <a href="{% url 'stock_receive' %}">Record your first delivery</a>
+            {% endif %}
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

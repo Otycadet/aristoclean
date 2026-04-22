@@ -274,9 +274,13 @@
   </div>
   <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
   <a href="{% url 'stock_list' %}" {% if 'stock' in request.resolver_match.url_name %}class="active"{% endif %}>Stock</a>
+  {% if user.profile.can_operate_stock %}
   <a href="{% url 'issue_stock' %}" {% if 'issue' in request.resolver_match.url_name %}class="active"{% endif %}>Issue</a>
+  {% endif %}
   <a href="{% url 'receipts_list' %}" {% if 'receipt' in request.resolver_match.url_name %}class="active"{% endif %}>Receipts</a>
+  {% if user.profile.can_view_reports %}
   <a href="{% url 'reports' %}" {% if 'report' in request.resolver_match.url_name %}class="active"{% endif %}>Reports</a>
+  {% endif %}
   {% if user.profile.is_manager %}
   <a href="{% url 'manage_items' %}" {% if 'manage' in request.resolver_match.url_name %}class="active"{% endif %}>Manage</a>
   {% endif %}

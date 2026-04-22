@@ -113,9 +113,11 @@ class DistributionLine(models.Model):
 # ── Role helper ────────────────────────────────────────────────────────────
 
 class UserProfile(models.Model):
+    ROLE_VIEWER = "viewer"
     ROLE_STOREKEEPER = "storekeeper"
     ROLE_MANAGER = "manager"
     ROLE_CHOICES = [
+        (ROLE_VIEWER, "Viewer"),
         (ROLE_STOREKEEPER, "Store Keeper"),
         (ROLE_MANAGER, "Manager / Admin"),
     ]
@@ -127,5 +129,17 @@ class UserProfile(models.Model):
         return f"{self.user.username} ({self.get_role_display()})"
 
     @property
+    def is_viewer(self):
+        return self.role == self.ROLE_VIEWER
+
+    @property
     def is_manager(self):
+        return self.role == self.ROLE_MANAGER
+
+    @property
+    def can_operate_stock(self):
+        return self.role in {self.ROLE_STOREKEEPER, self.ROLE_MANAGER}
+
+    @property
+    def can_view_reports(self):
         return self.role == self.ROLE_MANAGER

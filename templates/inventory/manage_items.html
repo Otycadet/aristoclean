@@ -1,9 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Manage Items — Aristoclean{% endblock %}
+{% block title %}Manage Items - Aristoclean{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>Manage Items</h1>
-  <a href="{% url 'manage_locations' %}" class="btn btn-secondary btn-sm">Manage Locations →</a>
+  <div style="display:flex;gap:0.75rem;">
+    <a href="{% url 'manage_locations' %}" class="btn btn-secondary btn-sm">Locations</a>
+    <a href="{% url 'manage_users' %}" class="btn btn-secondary btn-sm">Users</a>
+  </div>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;align-items:start;">

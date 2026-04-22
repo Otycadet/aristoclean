@@ -79,6 +79,21 @@
       border: 1px solid rgba(255,255,255,0.25);
       border-radius: var(--radius);
     }
+    .nav-logout-form {
+      margin-left: 0.75rem;
+    }
+    .nav-logout-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      padding: 0;
+    }
+    .nav-logout-btn:hover {
+      color: #fff;
+    }
     /* ── Main layout ── */
     main {
       flex: 1;
@@ -286,7 +301,10 @@
   {% endif %}
   <div class="nav-spacer"></div>
   <span class="nav-user">{{ user.get_full_name|default:user.username }}</span>
-  <a href="{% url 'logout' %}" style="margin-left:0.75rem; font-size:0.75rem; opacity:0.7;">Sign out</a>
+  <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
+    {% csrf_token %}
+    <button type="submit" class="nav-logout-btn">Sign out</button>
+  </form>
 </nav>
 {% endif %}
 

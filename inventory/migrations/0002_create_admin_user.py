@@ -1,7 +1,6 @@
 # Generated migration for creating initial admin user
 
 from django.db import migrations
-from django.contrib.auth.models import User
 
 
 def create_admin_user(apps, schema_editor):
@@ -9,6 +8,8 @@ def create_admin_user(apps, schema_editor):
     USERNAME = 'management'
     PASSWORD = 'password123'
     EMAIL = 'admin@aristoclean.com'
+
+    User = apps.get_model('auth', 'User')
 
     # Only create if user doesn't exist
     if not User.objects.filter(username=USERNAME).exists():

@@ -89,6 +89,10 @@ def _serialize_items_for_js(items_queryset):
     ])
 
 
+def _display_name_for_user(user):
+    return user.get_full_name().strip() or user.username
+
+
 @login_required
 def dashboard(request):
     items = _annotate_item_stock(Item.objects.filter(active=True)).order_by("name")
@@ -143,7 +147,11 @@ def stock_list(request):
 @login_required
 @stock_operator_required
 def stock_receive(request):
-    header_form = DeliveryHeaderForm(request.POST or None, initial={"received_at": date.today()})
+    received_by_name = _display_name_for_user(request.user)
+    header_form = DeliveryHeaderForm(
+        request.POST or None,
+        initial={"received_at": date.today()},
+    )
     error = None
 
     if request.method == "POST":
@@ -183,6 +191,7 @@ def stock_receive(request):
         "header_form": header_form,
         "items_json": _serialize_items_for_js(items_qs),
         "error": error,
+        "received_by_name": received_by_name,
     })
 
 
@@ -224,13 +233,21 @@ def _parse_delivery_lines(post_data):
 @login_required
 @stock_operator_required
 def issue_stock(request):
-    header_form = IssueBatchHeaderForm(request.POST or None, initial={"issued_at": date.today()})
+    issued_by_name = _display_name_for_user(request.user)
+    header_form = IssueBatchHeaderForm(
+        request.POST or None,
+        initial={
+            "issued_at": date.today(),
+            "issued_by": issued_by_name,
+        },
+    )
     error = None
 
     if request.method == "POST":
         lines = _parse_issue_lines(request.POST)
         if header_form.is_valid() and lines is not None:
             hd = header_form.cleaned_data
+            hd["issued_by"] = issued_by_name
             try:
                 batch = _create_issue_batch(hd, lines, request.user)
                 messages.success(request, f"Receipt {batch.receipt_number} created.")
@@ -245,6 +262,7 @@ def issue_stock(request):
         "header_form": header_form,
         "items_json": _serialize_items_for_js(items_qs),
         "error": error,
+        "issued_by_name": issued_by_name,
     })
 
 

@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Item, Location, StockEntry, IssueBatch, DistributionLine, UserProfile
+
+from .models import DistributionLine, IssueBatch, Item, Location, StockAdjustment, StockEntry, UserProfile
 
 
 @admin.register(UserProfile)
@@ -19,13 +20,21 @@ class ItemAdmin(admin.ModelAdmin):
 class LocationAdmin(admin.ModelAdmin):
     list_display = ["name", "active"]
     list_filter = ["active"]
+    search_fields = ["name"]
 
 
 @admin.register(StockEntry)
 class StockEntryAdmin(admin.ModelAdmin):
-    list_display = ["item", "quantity", "supplier", "received_at", "created_by"]
+    list_display = ["item", "quantity", "supplier", "reference", "received_at", "created_by"]
     list_filter = ["received_at"]
-    search_fields = ["item__name", "supplier"]
+    search_fields = ["item__name", "supplier", "reference"]
+
+
+@admin.register(StockAdjustment)
+class StockAdjustmentAdmin(admin.ModelAdmin):
+    list_display = ["item", "quantity_delta", "reason", "adjusted_at", "created_by"]
+    list_filter = ["reason", "adjusted_at"]
+    search_fields = ["item__name", "notes"]
 
 
 class DistributionLineInline(admin.TabularInline):
@@ -35,7 +44,7 @@ class DistributionLineInline(admin.TabularInline):
 
 @admin.register(IssueBatch)
 class IssueBatchAdmin(admin.ModelAdmin):
-    list_display = ["receipt_number", "location", "issued_at", "issued_to", "issued_by"]
-    list_filter = ["issued_at", "location"]
+    list_display = ["receipt_number", "location", "issued_at", "issued_to", "issued_by", "is_voided"]
+    list_filter = ["issued_at", "location", "is_voided"]
     search_fields = ["receipt_number", "issued_to", "issued_by"]
     inlines = [DistributionLineInline]

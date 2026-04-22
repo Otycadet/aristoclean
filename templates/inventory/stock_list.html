@@ -3,12 +3,14 @@
 {% block content %}
 <div class="page-header">
   <h1>Stock Levels</h1>
-  <div style="display:flex;gap:0.75rem;">
+  <div class="toolbar">
+    <a href="{% url 'low_stock_report' %}" class="btn btn-secondary btn-sm">Reorder Report</a>
     {% if user.profile.is_manager %}
+    <a href="{% url 'stock_adjustment_create' %}" class="btn btn-secondary btn-sm">Adjust Stock</a>
     <a href="{% url 'export_stock_csv' %}" class="btn btn-secondary btn-sm">Export CSV</a>
     {% endif %}
     {% if user.profile.can_operate_stock %}
-    <a href="{% url 'stock_receive' %}" class="btn btn-primary btn-sm">+ Receive Delivery</a>
+    <a href="{% url 'stock_receive' %}" class="btn btn-primary btn-sm">Receive Delivery</a>
     {% endif %}
   </div>
 </div>
@@ -22,8 +24,10 @@
           <th>Unit</th>
           <th style="text-align:right">Received</th>
           <th style="text-align:right">Issued</th>
+          <th style="text-align:right">Adjustments</th>
           <th style="text-align:right">Balance</th>
           <th style="text-align:right">Reorder</th>
+          <th style="text-align:right">Shortfall</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -34,28 +38,17 @@
           <td style="color:var(--muted)">{{ row.item.unit }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.total_received|floatformat:2 }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.total_issued|floatformat:2 }}</td>
-          <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">
-            {% if row.current_stock == row.current_stock|floatformat:0|add:"0" %}
-              {{ row.current_stock|floatformat:0 }}
-            {% else %}
-              {{ row.current_stock|floatformat:2 }}
-            {% endif %}
-          </td>
-          <td style="text-align:right;color:var(--muted)">{{ row.item.reorder_level|floatformat:0 }}</td>
+          <td style="text-align:right;color:var(--muted)">{{ row.total_adjustments|floatformat:2 }}</td>
+          <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">{{ row.current_stock|floatformat:2 }}</td>
+          <td style="text-align:right;color:var(--muted)">{{ row.item.reorder_level|floatformat:2 }}</td>
+          <td style="text-align:right;color:var(--muted)">{{ row.reorder_shortfall|floatformat:2 }}</td>
           <td>
             {% if row.low %}<span class="badge badge-low">Low Stock</span>
             {% else %}<span class="badge badge-ok">OK</span>{% endif %}
           </td>
         </tr>
         {% empty %}
-        <tr>
-          <td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted)">
-            No items yet.
-            {% if user.profile.can_operate_stock %}
-            <a href="{% url 'stock_receive' %}">Record your first delivery</a>
-            {% endif %}
-          </td>
-        </tr>
+        <tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--muted)">No items yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

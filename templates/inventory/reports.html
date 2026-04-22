@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Reports — Aristoclean{% endblock %}
+{% block title %}Reports - Aristoclean{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>Monthly Reports</h1>
@@ -7,30 +7,36 @@
 
 <div class="card">
   <div class="card-title">Filter</div>
-  <form method="get" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
-    <div class="form-group" style="margin-bottom:0;min-width:100px">
+  <form method="get" class="form-row" style="align-items:end;">
+    <div class="form-group" style="margin-bottom:0;">
       <label>Year</label>
       {{ form.year }}
     </div>
-    <div class="form-group" style="margin-bottom:0;min-width:140px">
+    <div class="form-group" style="margin-bottom:0;">
       <label>Month</label>
       {{ form.month }}
     </div>
-    <div class="form-group" style="margin-bottom:0;min-width:180px">
+    <div class="form-group" style="margin-bottom:0;">
       <label>Location</label>
       {{ form.location }}
     </div>
-    <button type="submit" class="btn btn-primary">Run Report</button>
-    {% if ran %}
-    <a href="{% url 'export_report_csv' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Export CSV</a>
-    {% endif %}
+    <div class="form-group" style="margin-bottom:0;">
+      <label>{{ form.query.label }}</label>
+      {{ form.query }}
+    </div>
+    <div class="toolbar">
+      <button type="submit" class="btn btn-primary">Run Report</button>
+      {% if ran %}
+      <a href="{% url 'export_report_csv' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Export CSV</a>
+      {% endif %}
+    </div>
   </form>
 </div>
 
 {% if ran %}
   {% if summary_rows %}
   <div class="card">
-    <div class="card-title">Summary by Location &amp; Item</div>
+    <div class="card-title">Summary by Location and Item</div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -72,30 +78,40 @@
           </tr>
         </thead>
         <tbody>
-          {% for row in detail_rows %}
+          {% for row in detail_page %}
           <tr>
             <td>
-              <a href="{% url 'receipt_detail' row.receipt_number %}" style="color:var(--accent);font-family:'Helvetica Neue',Arial,sans-serif;">
-                {{ row.receipt_number }}
+              <a href="{% url 'receipt_detail' row.batch.receipt_number %}" style="color:var(--accent);font-family:'Helvetica Neue',Arial,sans-serif;">
+                {{ row.batch.receipt_number }}
               </a>
             </td>
-            <td>{{ row.issued_at }}</td>
-            <td>{{ row.location }}</td>
-            <td><strong>{{ row.item }}</strong></td>
+            <td>{{ row.batch.issued_at }}</td>
+            <td>{{ row.batch.location.name }}</td>
+            <td><strong>{{ row.item.name }}</strong></td>
             <td style="text-align:right;font-variant-numeric:tabular-nums">{{ row.quantity|floatformat:2 }}</td>
-            <td style="color:var(--muted)">{{ row.unit }}</td>
-            <td>{{ row.issued_to|default:"—" }}</td>
-            <td>{{ row.issued_by|default:"—" }}</td>
+            <td style="color:var(--muted)">{{ row.item.unit }}</td>
+            <td>{{ row.batch.issued_to|default:"-" }}</td>
+            <td>{{ row.batch.issued_by|default:"-" }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+
+    {% if detail_page and detail_page.paginator.num_pages > 1 %}
+    <div class="pagination">
+      {% if detail_page.has_previous %}
+      <a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ detail_page.previous_page_number }}">Previous</a>
+      {% endif %}
+      <span>Page {{ detail_page.number }} of {{ detail_page.paginator.num_pages }}</span>
+      {% if detail_page.has_next %}
+      <a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ detail_page.next_page_number }}">Next</a>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
   {% else %}
-  <div class="card" style="text-align:center;padding:3rem;color:var(--muted)">
-    No issues found for the selected period.
-  </div>
+  <div class="card" style="text-align:center;padding:3rem;color:var(--muted)">No issues found for the selected period.</div>
   {% endif %}
 {% endif %}
 {% endblock %}

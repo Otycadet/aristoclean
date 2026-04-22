@@ -1,16 +1,17 @@
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth.models import User
 from django.utils import timezone
-from .models import Item, Location, UserProfile
 
+from .models import Item, Location, StockAdjustment, UserProfile
 
-# ── Stock / Incoming delivery ──────────────────────────────────────────────
 
 class StockEntryLineForm(forms.Form):
     item_name = forms.CharField(max_length=255, label="Item")
     unit = forms.CharField(max_length=100)
-    reorder_level = forms.FloatField(min_value=0, initial=0, label="Reorder level")
-    quantity = forms.FloatField(min_value=0.001, label="Quantity received")
+    reorder_level = forms.DecimalField(min_value=0, initial=Decimal("0.00"), label="Reorder level")
+    quantity = forms.DecimalField(min_value=Decimal("0.01"), decimal_places=2, max_digits=12, label="Quantity received")
 
 
 class DeliveryHeaderForm(forms.Form):
@@ -19,29 +20,33 @@ class DeliveryHeaderForm(forms.Form):
     notes = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), required=False)
     received_at = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date"}),
-        initial=timezone.now().date,
+        initial=timezone.localdate,
     )
 
 
-# ── Issue stock ────────────────────────────────────────────────────────────
-
 class IssueBatchHeaderForm(forms.Form):
-    location = forms.CharField(max_length=255, label="Location / Department")
+    location = forms.ModelChoiceField(
+        queryset=Location.objects.none(),
+        label="Location / Department",
+        empty_label="Select location",
+    )
     issued_to = forms.CharField(max_length=255, required=False, label="Issued to")
     issued_by = forms.CharField(max_length=255, required=False, label="Issued by")
     notes = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), required=False)
     issued_at = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date"}),
-        initial=timezone.now().date,
+        initial=timezone.localdate,
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["location"].queryset = Location.objects.filter(active=True).order_by("name")
 
 
 class IssueLineForm(forms.Form):
     item_name = forms.CharField(max_length=255, label="Item")
-    quantity = forms.FloatField(min_value=0.001)
+    quantity = forms.DecimalField(min_value=Decimal("0.01"), decimal_places=2, max_digits=12)
 
-
-# ── Admin / management ─────────────────────────────────────────────────────
 
 class ItemForm(forms.ModelForm):
     class Meta:
@@ -55,17 +60,17 @@ class LocationForm(forms.ModelForm):
         fields = ["name", "active"]
 
 
-# ── Reports ────────────────────────────────────────────────────────────────
-
 class ReportFilterForm(forms.Form):
     MONTH_CHOICES = [
         (1, "January"), (2, "February"), (3, "March"), (4, "April"),
         (5, "May"), (6, "June"), (7, "July"), (8, "August"),
         (9, "September"), (10, "October"), (11, "November"), (12, "December"),
     ]
-    year = forms.IntegerField(min_value=2000, max_value=2100, initial=timezone.now().year)
-    month = forms.ChoiceField(choices=MONTH_CHOICES, initial=timezone.now().month)
+
+    year = forms.IntegerField(min_value=2000, max_value=2100, initial=timezone.localdate().year)
+    month = forms.ChoiceField(choices=MONTH_CHOICES, initial=timezone.localdate().month)
     location = forms.ChoiceField(required=False)
+    query = forms.CharField(required=False, max_length=255, label="Search")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -74,6 +79,73 @@ class ReportFilterForm(forms.Form):
             for loc in Location.objects.filter(active=True).order_by("name")
         ]
         self.fields["location"].choices = location_choices
+
+
+class ReceiptFilterForm(forms.Form):
+    q = forms.CharField(required=False, max_length=255, label="Search")
+    location = forms.ChoiceField(required=False)
+    status = forms.ChoiceField(
+        required=False,
+        choices=[
+            ("", "All receipts"),
+            ("active", "Active only"),
+            ("voided", "Voided only"),
+        ],
+    )
+    date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="From",
+    )
+    date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="To",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["location"].choices = [("", "All locations")] + [
+            (loc.name, loc.name)
+            for loc in Location.objects.order_by("name")
+        ]
+
+
+class StockAdjustmentForm(forms.ModelForm):
+    DIRECTION_INCREASE = "increase"
+    DIRECTION_DECREASE = "decrease"
+    DIRECTION_CHOICES = [
+        (DIRECTION_INCREASE, "Increase stock"),
+        (DIRECTION_DECREASE, "Decrease stock"),
+    ]
+
+    direction = forms.ChoiceField(choices=DIRECTION_CHOICES)
+    quantity = forms.DecimalField(min_value=Decimal("0.01"), decimal_places=2, max_digits=12)
+
+    class Meta:
+        model = StockAdjustment
+        fields = ["item", "reason", "notes", "adjusted_at"]
+        widgets = {
+            "adjusted_at": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["item"].queryset = Item.objects.filter(active=True).order_by("name")
+        self.fields["adjusted_at"].initial = timezone.localdate
+
+    def clean(self):
+        cleaned_data = super().clean()
+        quantity = cleaned_data.get("quantity")
+        direction = cleaned_data.get("direction")
+        if quantity is not None and direction:
+            cleaned_data["quantity_delta"] = quantity if direction == self.DIRECTION_INCREASE else -quantity
+        return cleaned_data
+
+
+class ReceiptVoidForm(forms.Form):
+    reason = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), label="Void reason")
 
 
 class UserCreateForm(forms.ModelForm):

@@ -4,9 +4,9 @@
 <div class="page-header">
   <h1>Dashboard</h1>
   {% if user.profile.can_operate_stock %}
-  <div style="display:flex;gap:0.75rem;">
-    <a href="{% url 'stock_receive' %}" class="btn btn-secondary btn-sm">+ Receive Stock</a>
-    <a href="{% url 'issue_stock' %}" class="btn btn-primary btn-sm">+ Issue Stock</a>
+  <div class="toolbar">
+    <a href="{% url 'stock_receive' %}" class="btn btn-secondary btn-sm">Receive Stock</a>
+    <a href="{% url 'issue_stock' %}" class="btn btn-primary btn-sm">Issue Stock</a>
   </div>
   {% endif %}
 </div>
@@ -28,86 +28,122 @@
 
 {% if low_stock_count > 0 %}
 <div class="alert alert-warning">
-  {{ low_stock_count }} item{{ low_stock_count|pluralize }} at or below reorder level.
-  <a href="{% url 'stock_list' %}" style="font-weight:600;">View stock</a>
+  {{ low_stock_count }} item{{ low_stock_count|pluralize }} are at or below reorder level.
+  <a href="{% url 'low_stock_report' %}" style="font-weight:600;">Open reorder list</a>
 </div>
 {% endif %}
 
 <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.25rem;">
-  <div class="card">
-    <div class="card-title">Stock Overview</div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Unit</th>
-            <th style="text-align:right">Current Stock</th>
-            <th style="text-align:right">Reorder Level</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in stock_data %}
-          <tr>
-            <td><strong>{{ row.item.name }}</strong></td>
-            <td style="color:var(--muted)">{{ row.item.unit }}</td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums">
-              {% if row.current_stock == row.current_stock|floatformat:0|add:"0" %}
-                {{ row.current_stock|floatformat:0 }}
-              {% else %}
-                {{ row.current_stock|floatformat:2 }}
-              {% endif %}
-            </td>
-            <td style="text-align:right;color:var(--muted)">{{ row.item.reorder_level|floatformat:0 }}</td>
-            <td>
-              {% if row.low %}
+  <div>
+    <div class="card">
+      <div class="card-title">Stock Overview</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Unit</th>
+              <th style="text-align:right">Current Stock</th>
+              <th style="text-align:right">Reorder Level</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in stock_data|slice:":10" %}
+            <tr>
+              <td><strong>{{ row.item.name }}</strong></td>
+              <td style="color:var(--muted)">{{ row.item.unit }}</td>
+              <td style="text-align:right;font-variant-numeric:tabular-nums">{{ row.current_stock|floatformat:2 }}</td>
+              <td style="text-align:right;color:var(--muted)">{{ row.item.reorder_level|floatformat:2 }}</td>
+              <td>
+                {% if row.low %}
                 <span class="badge badge-low">Low</span>
-              {% else %}
+                {% else %}
                 <span class="badge badge-ok">OK</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="5" style="color:var(--muted);text-align:center;padding:2rem">
-              No items yet.
-              {% if user.profile.can_operate_stock %}
-              <a href="{% url 'stock_receive' %}">Receive stock</a>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" style="text-align:center;color:var(--muted);padding:2rem;">No items yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if stock_data %}
+      <div style="margin-top:1rem;text-align:right">
+        <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">Full stock view</a>
+      </div>
+      {% endif %}
     </div>
-    {% if stock_data %}
-    <div style="margin-top:1rem;text-align:right">
-      <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">Full stock view</a>
+
+    {% if low_stock_items %}
+    <div class="card">
+      <div class="card-title">Reorder Focus</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Unit</th>
+              <th style="text-align:right">Current</th>
+              <th style="text-align:right">Shortfall</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in low_stock_items %}
+            <tr>
+              <td><strong>{{ row.item.name }}</strong></td>
+              <td>{{ row.item.unit }}</td>
+              <td style="text-align:right">{{ row.current_stock|floatformat:2 }}</td>
+              <td style="text-align:right">{{ row.reorder_shortfall|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
     {% endif %}
   </div>
 
-  <div class="card">
-    <div class="card-title">Recent Issues</div>
-    {% for batch in recent_batches %}
-    <div style="padding:0.65rem 0;border-bottom:1px solid var(--border);">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;">
-        <a href="{% url 'receipt_detail' batch.receipt_number %}" style="color:var(--accent);font-weight:600;font-size:0.85rem;font-family:'Helvetica Neue',Arial,sans-serif;">
-          {{ batch.receipt_number }}
-        </a>
-        <span style="font-size:0.75rem;color:var(--muted)">{{ batch.issued_at }}</span>
+  <div>
+    <div class="card">
+      <div class="card-title">Recent Issues</div>
+      {% for batch in recent_batches %}
+      <div style="padding:0.65rem 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <a href="{% url 'receipt_detail' batch.receipt_number %}" style="color:var(--accent);font-weight:600;font-size:0.85rem;font-family:'Helvetica Neue',Arial,sans-serif;">
+            {{ batch.receipt_number }}
+          </a>
+          <span style="font-size:0.75rem;color:var(--muted)">{{ batch.issued_at }}</span>
+        </div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem">
+          {{ batch.location.name }} | {{ batch.line_count }} item{{ batch.line_count|pluralize }}
+          {% if batch.is_voided %}<span class="badge badge-danger" style="margin-left:0.35rem;">Voided</span>{% endif %}
+        </div>
       </div>
-      <div style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem">
-        {{ batch.location.name }} - {{ batch.line_count }} item{{ batch.line_count|pluralize }}
-      </div>
+      {% empty %}
+      <p style="color:var(--muted);font-size:0.85rem">No issues yet.</p>
+      {% endfor %}
     </div>
-    {% empty %}
-    <p style="color:var(--muted);font-size:0.85rem">No issues yet.</p>
-    {% endfor %}
-    {% if recent_batches %}
-    <div style="margin-top:1rem">
-      <a href="{% url 'receipts_list' %}" class="btn btn-secondary btn-sm" style="width:100%;text-align:center;">All receipts</a>
+
+    {% if recent_adjustments %}
+    <div class="card">
+      <div class="card-title">Recent Adjustments</div>
+      {% for adjustment in recent_adjustments %}
+      <div style="padding:0.65rem 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;gap:0.5rem;">
+          <strong style="font-size:0.85rem">{{ adjustment.item.name }}</strong>
+          <span style="font-size:0.8rem;font-family:'Helvetica Neue',Arial,sans-serif;">
+            {{ adjustment.quantity_delta|floatformat:2 }}
+          </span>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:0.2rem">
+          {{ adjustment.get_reason_display }} on {{ adjustment.adjusted_at }}
+        </div>
+      </div>
+      {% endfor %}
     </div>
     {% endif %}
   </div>

@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Aristoclean Inventory{% endblock %}</title>
   <style>
-    /* ── Design tokens ── */
     :root {
       --bg: #f5f4f0;
       --surface: #ffffff;
@@ -25,14 +24,13 @@
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Georgia', 'Times New Roman', serif;
+      font-family: Georgia, "Times New Roman", serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
-    /* ── Nav ── */
     nav {
       background: var(--accent);
       color: #fff;
@@ -44,6 +42,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
+      flex-wrap: wrap;
     }
     .nav-brand {
       font-size: 1.05rem;
@@ -60,7 +59,7 @@
       text-decoration: none;
       padding: 1.15rem 0.85rem;
       font-size: 0.82rem;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       letter-spacing: 0.04em;
       text-transform: uppercase;
       transition: color 0.15s, background 0.15s;
@@ -73,28 +72,23 @@
     .nav-spacer { flex: 1; }
     .nav-user {
       font-size: 0.8rem;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       opacity: 0.75;
       padding: 0.5rem 0.75rem;
       border: 1px solid rgba(255,255,255,0.25);
       border-radius: var(--radius);
     }
-    .nav-logout-form {
-      margin-left: 0.75rem;
-    }
+    .nav-logout-form { margin-left: 0.75rem; }
     .nav-logout-btn {
       background: none;
       border: none;
       color: rgba(255,255,255,0.7);
       cursor: pointer;
       font-size: 0.75rem;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       padding: 0;
     }
-    .nav-logout-btn:hover {
-      color: #fff;
-    }
-    /* ── Main layout ── */
+    .nav-logout-btn:hover { color: #fff; }
     main {
       flex: 1;
       max-width: 1200px;
@@ -102,21 +96,21 @@
       margin: 0 auto;
       padding: 2rem 1.5rem;
     }
-    /* ── Page header ── */
     .page-header {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
+      gap: 1rem;
       margin-bottom: 1.75rem;
       padding-bottom: 1rem;
       border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
     }
     .page-header h1 {
       font-size: 1.6rem;
       font-weight: 700;
       letter-spacing: -0.01em;
     }
-    /* ── Cards ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -129,18 +123,17 @@
       font-size: 0.7rem;
       text-transform: uppercase;
       letter-spacing: 0.12em;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       color: var(--muted);
       margin-bottom: 0.75rem;
       font-weight: 600;
     }
-    /* ── Tables ── */
     .table-wrap { overflow-x: auto; }
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.88rem;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
     }
     thead th {
       text-align: left;
@@ -160,28 +153,26 @@
     }
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover { background: #f9f8f5; }
-    /* ── Badges ── */
     .badge {
       display: inline-block;
       padding: 0.2rem 0.55rem;
       border-radius: 3px;
       font-size: 0.7rem;
       font-weight: 700;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       letter-spacing: 0.05em;
       text-transform: uppercase;
     }
     .badge-ok { background: var(--accent-light); color: var(--accent); }
     .badge-low { background: var(--warning-light); color: var(--warning); }
     .badge-danger { background: var(--danger-light); color: var(--danger); }
-    /* ── Buttons ── */
     .btn {
       display: inline-block;
       padding: 0.55rem 1.1rem;
       border-radius: var(--radius);
       border: none;
       cursor: pointer;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       font-size: 0.82rem;
       font-weight: 600;
       letter-spacing: 0.03em;
@@ -194,27 +185,26 @@
     .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
     .btn-secondary:hover { background: var(--bg); }
     .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #a82d21; }
     .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.76rem; }
-    /* ── Forms ── */
     .form-group { margin-bottom: 1.1rem; }
     label {
       display: block;
       font-size: 0.76rem;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--muted);
       margin-bottom: 0.35rem;
     }
-    input[type=text], input[type=number], input[type=date],
-    input[type=password], select, textarea {
+    input[type=text], input[type=number], input[type=date], input[type=password], select, textarea {
       width: 100%;
       padding: 0.55rem 0.75rem;
       border: 1px solid var(--border);
       border-radius: var(--radius);
       font-size: 0.88rem;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       background: var(--surface);
       color: var(--text);
       transition: border-color 0.15s, box-shadow 0.15s;
@@ -226,21 +216,19 @@
     }
     .form-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 1rem;
     }
-    /* ── Alerts ── */
     .alert {
       padding: 0.85rem 1rem;
       border-radius: var(--radius);
       margin-bottom: 1rem;
       font-size: 0.88rem;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
     }
     .alert-error { background: var(--danger-light); color: var(--danger); border-left: 3px solid var(--danger); }
     .alert-success { background: var(--accent-light); color: var(--accent); border-left: 3px solid var(--accent); }
     .alert-warning { background: var(--warning-light); color: var(--warning); border-left: 3px solid var(--warning); }
-    /* ── Stats row ── */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -258,7 +246,7 @@
       font-size: 0.68rem;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       color: var(--muted);
       font-weight: 600;
       margin-bottom: 0.4rem;
@@ -271,7 +259,21 @@
     }
     .stat-value.danger { color: var(--danger); }
     .stat-value.accent { color: var(--accent); }
-    /* ── Print ── */
+    .toolbar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .pagination {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: flex-end;
+      margin-top: 1rem;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      font-size: 0.82rem;
+    }
     @media print {
       nav, .no-print { display: none !important; }
       main { padding: 0; max-width: 100%; }
@@ -288,7 +290,7 @@
     <span>Inventory Manager</span>
   </div>
   <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
-  <a href="{% url 'stock_list' %}" {% if 'stock' in request.resolver_match.url_name %}class="active"{% endif %}>Stock</a>
+  <a href="{% url 'stock_list' %}" {% if 'stock' in request.resolver_match.url_name or 'low_stock' in request.resolver_match.url_name %}class="active"{% endif %}>Stock</a>
   {% if user.profile.can_operate_stock %}
   <a href="{% url 'issue_stock' %}" {% if 'issue' in request.resolver_match.url_name %}class="active"{% endif %}>Issue</a>
   {% endif %}

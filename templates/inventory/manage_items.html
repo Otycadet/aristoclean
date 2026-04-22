@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Manage Items — Aristoclean{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Manage Items</h1>
+  <a href="{% url 'manage_locations' %}" class="btn btn-secondary btn-sm">Manage Locations →</a>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;align-items:start;">
+  <div class="card">
+    <div class="card-title">Add / Update Item</div>
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="form-group">
+        <label>{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ field.errors.0 }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary" style="width:100%">Save Item</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title">All Items ({{ items|length }})</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Unit</th>
+            <th style="text-align:right">Reorder Level</th>
+            <th>Active</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td><strong>{{ item.name }}</strong></td>
+            <td>{{ item.unit }}</td>
+            <td style="text-align:right">{{ item.reorder_level|floatformat:0 }}</td>
+            <td>{% if item.active %}<span class="badge badge-ok">Yes</span>{% else %}<span class="badge badge-danger">No</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:2rem">No items yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

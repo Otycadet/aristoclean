@@ -1,0 +1,6 @@
+Django==5.0.6
+dj-database-url==2.2.0
+# psycopg2-binary==2.9.10  # Only needed for production (PostgreSQL)
+whitenoise==6.7.0
+gunicorn==22.0.0
+python-dotenv==1.0.1

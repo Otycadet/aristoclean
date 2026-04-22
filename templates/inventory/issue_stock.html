@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Issue Stock — Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+  .line-table { width:100%; border-collapse:collapse; }
+  .line-table th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); font-family:'Helvetica Neue',Arial,sans-serif; font-weight:600; padding:0.5rem 0.5rem 0.5rem 0; border-bottom:1px solid var(--border); }
+  .line-table td { padding:0.4rem 0.4rem 0.4rem 0; vertical-align:middle; }
+  .line-table .col-item { width:45%; }
+  .line-table .col-qty { width:22%; }
+  .line-table .col-stock { width:22%; }
+  .line-table .col-del { width:5%; text-align:center; }
+  .del-btn { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1.1rem; padding:0.25rem 0.4rem; border-radius:3px; }
+  .del-btn:hover { color:var(--danger); background:var(--danger-light); }
+  .stock-hint { font-size:0.75rem; color:var(--muted); font-family:'Helvetica Neue',Arial,sans-serif; }
+  .stock-hint.warn { color:var(--warning); font-weight:600; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Issue Stock</h1>
+  <a href="{% url 'receipts_list' %}" class="btn btn-secondary btn-sm">← All Receipts</a>
+</div>
+
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+<form method="post" id="issueForm">
+  {% csrf_token %}
+
+  <div class="card">
+    <div class="card-title">Issue Details</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Location / Department *</label>
+        <input type="text" name="location" list="location_list" required
+               placeholder="Select or type location"
+               value="{{ header_form.location.value|default:'' }}">
+        <datalist id="location_list">
+          {% for loc in header_form.fields.location.choices %}{% if loc.0 %}
+          <option value="{{ loc.0 }}">{% endif %}{% endfor %}
+        </datalist>
+      </div>
+      <div class="form-group">
+        <label>Issued To</label>
+        <input type="text" name="issued_to" value="{{ header_form.issued_to.value|default:'' }}" placeholder="Recipient name">
+      </div>
+      <div class="form-group">
+        <label>Issued By</label>
+        <input type="text" name="issued_by" value="{{ header_form.issued_by.value|default:'' }}" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label>Date *</label>
+        {{ header_form.issued_at }}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      {{ header_form.notes }}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Items to Issue</div>
+    <table class="line-table" id="lineTable">
+      <thead>
+        <tr>
+          <th class="col-item">Item</th>
+          <th class="col-qty">Quantity *</th>
+          <th class="col-stock">Available Stock</th>
+          <th class="col-del"></th>
+        </tr>
+      </thead>
+      <tbody id="lineBody"></tbody>
+    </table>
+    <div style="margin-top:1rem;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ Add Item</button>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;gap:1rem;margin-top:0.5rem;">
+    <a href="{% url 'receipts_list' %}" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">Generate Receipt</button>
+  </div>
+</form>
+
+<script>
+const ITEMS = {{ items_json|safe }};
+let lineCount = 0;
+
+function itemMap() {
+  const m = {};
+  ITEMS.forEach(i => { m[i.name.toLowerCase()] = i; });
+  return m;
+}
+const ITEM_MAP = itemMap();
+
+function addLine() {
+  const idx = lineCount++;
+  const tbody = document.getElementById('lineBody');
+  const tr = document.createElement('tr');
+  tr.id = `line_${idx}`;
+  tr.innerHTML = `
+    <td class="col-item">
+      <input type="text" name="issue_item_${idx}" placeholder="Item name"
+             autocomplete="off" oninput="handleItemInput(this, ${idx})"
+             onchange="updateStock(this.value, ${idx})" required>
+      <div id="suggest_${idx}" style="position:relative"></div>
+    </td>
+    <td class="col-qty">
+      <input type="number" name="issue_qty_${idx}" min="0.001" step="any"
+             placeholder="0" oninput="checkQty(${idx})" required>
+    </td>
+    <td class="col-stock">
+      <span id="stock_${idx}" class="stock-hint">—</span>
+    </td>
+    <td class="col-del">
+      <button type="button" class="del-btn" onclick="removeLine(${idx})">×</button>
+    </td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function removeLine(idx) {
+  const el = document.getElementById(`line_${idx}`);
+  if (el) el.remove();
+}
+
+function handleItemInput(input, idx) {
+  const val = input.value;
+  const box = document.getElementById(`suggest_${idx}`);
+  const matches = ITEMS.filter(i => i.name.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
+  if (!val || !matches.length) { box.innerHTML = ''; updateStock(val, idx); return; }
+  box.innerHTML = `<div style="position:absolute;top:0;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:4px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.1)">
+    ${matches.map(m => `<div onclick="selectItem(${idx},'${m.name.replace(/'/g,"\\'")}', ${m.stock})"
+      style="padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;font-family:'Helvetica Neue',Arial,sans-serif;"
+      onmouseover="this.style.background='#f0f0ec'" onmouseout="this.style.background=''"
+    >${m.name} <span style="color:var(--muted);font-size:0.75rem">${m.unit} — ${m.stock} avail.</span></div>`).join('')}
+  </div>`;
+}
+
+function selectItem(idx, name, stock) {
+  document.querySelector(`[name=issue_item_${idx}]`).value = name;
+  document.getElementById(`suggest_${idx}`).innerHTML = '';
+  setStockDisplay(idx, stock, name);
+}
+
+function updateStock(val, idx) {
+  const item = ITEM_MAP[val.trim().toLowerCase()];
+  if (item) setStockDisplay(idx, item.stock, item.name);
+  else document.getElementById(`stock_${idx}`).textContent = val ? 'Not found' : '—';
+}
+
+function setStockDisplay(idx, stock, name) {
+  const el = document.getElementById(`stock_${idx}`);
+  const item = ITEM_MAP[name.toLowerCase()];
+  const unit = item ? item.unit : '';
+  el.textContent = `${stock} ${unit}`;
+  el.className = stock <= 0 ? 'stock-hint warn' : 'stock-hint';
+}
+
+function checkQty(idx) {
+  const itemName = document.querySelector(`[name=issue_item_${idx}]`).value.trim().toLowerCase();
+  const qty = parseFloat(document.querySelector(`[name=issue_qty_${idx}]`).value) || 0;
+  const item = ITEM_MAP[itemName];
+  const el = document.getElementById(`stock_${idx}`);
+  if (item) {
+    const over = qty > item.stock;
+    el.className = over ? 'stock-hint warn' : 'stock-hint';
+  }
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('[id^=suggest_]').forEach(el => el.innerHTML = '');
+});
+
+addLine(); addLine(); addLine();
+</script>
+{% endblock %}

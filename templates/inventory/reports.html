@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Reports — Aristoclean{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Monthly Reports</h1>
+</div>
+
+<div class="card">
+  <div class="card-title">Filter</div>
+  <form method="get" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+    <div class="form-group" style="margin-bottom:0;min-width:100px">
+      <label>Year</label>
+      {{ form.year }}
+    </div>
+    <div class="form-group" style="margin-bottom:0;min-width:140px">
+      <label>Month</label>
+      {{ form.month }}
+    </div>
+    <div class="form-group" style="margin-bottom:0;min-width:180px">
+      <label>Location</label>
+      {{ form.location }}
+    </div>
+    <button type="submit" class="btn btn-primary">Run Report</button>
+    {% if ran %}
+    <a href="{% url 'export_report_csv' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Export CSV</a>
+    {% endif %}
+  </form>
+</div>
+
+{% if ran %}
+  {% if summary_rows %}
+  <div class="card">
+    <div class="card-title">Summary by Location &amp; Item</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Location</th>
+            <th>Item</th>
+            <th>Unit</th>
+            <th style="text-align:right">Total Issued</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in summary_rows %}
+          <tr>
+            <td>{{ row.location }}</td>
+            <td><strong>{{ row.item }}</strong></td>
+            <td style="color:var(--muted)">{{ row.unit }}</td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ row.total|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Transaction Detail</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Receipt</th>
+            <th>Date</th>
+            <th>Location</th>
+            <th>Item</th>
+            <th style="text-align:right">Qty</th>
+            <th>Unit</th>
+            <th>Issued To</th>
+            <th>Issued By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in detail_rows %}
+          <tr>
+            <td>
+              <a href="{% url 'receipt_detail' row.receipt_number %}" style="color:var(--accent);font-family:'Helvetica Neue',Arial,sans-serif;">
+                {{ row.receipt_number }}
+              </a>
+            </td>
+            <td>{{ row.issued_at }}</td>
+            <td>{{ row.location }}</td>
+            <td><strong>{{ row.item }}</strong></td>
+            <td style="text-align:right;font-variant-numeric:tabular-nums">{{ row.quantity|floatformat:2 }}</td>
+            <td style="color:var(--muted)">{{ row.unit }}</td>
+            <td>{{ row.issued_to|default:"—" }}</td>
+            <td>{{ row.issued_by|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:3rem;color:var(--muted)">
+    No issues found for the selected period.
+  </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

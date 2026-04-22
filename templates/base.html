@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Aristoclean Inventory{% endblock %}</title>
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --border: #e0ddd6;
+      --text: #1a1a18;
+      --muted: #6b6b65;
+      --accent: #1a5c3a;
+      --accent-light: #e8f2ec;
+      --accent-hover: #134a2e;
+      --danger: #c0392b;
+      --danger-light: #fdecea;
+      --warning: #d4820a;
+      --warning-light: #fef3e2;
+      --radius: 6px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* ── Nav ── */
+    nav {
+      background: var(--accent);
+      color: #fff;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      box-shadow: var(--shadow-md);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 1rem 1.5rem 1rem 0;
+      border-right: 1px solid rgba(255,255,255,0.2);
+      margin-right: 0.5rem;
+      white-space: nowrap;
+    }
+    .nav-brand span { font-weight: 300; opacity: 0.8; font-size: 0.8rem; display: block; }
+    nav a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      padding: 1.15rem 0.85rem;
+      font-size: 0.82rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: color 0.15s, background 0.15s;
+      border-bottom: 3px solid transparent;
+    }
+    nav a:hover, nav a.active {
+      color: #fff;
+      border-bottom-color: rgba(255,255,255,0.6);
+    }
+    .nav-spacer { flex: 1; }
+    .nav-user {
+      font-size: 0.8rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      opacity: 0.75;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: var(--radius);
+    }
+    /* ── Main layout ── */
+    main {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+    /* ── Page header ── */
+    .page-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .page-header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .card-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      font-weight: 600;
+    }
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+    thead th {
+      text-align: left;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      background: var(--bg);
+    }
+    tbody td {
+      padding: 0.7rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #f9f8f5; }
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 3px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge-ok { background: var(--accent-light); color: var(--accent); }
+    .badge-low { background: var(--warning-light); color: var(--warning); }
+    .badge-danger { background: var(--danger-light); color: var(--danger); }
+    /* ── Buttons ── */
+    .btn {
+      display: inline-block;
+      padding: 0.55rem 1.1rem;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-decoration: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--bg); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.76rem; }
+    /* ── Forms ── */
+    .form-group { margin-bottom: 1.1rem; }
+    label {
+      display: block;
+      font-size: 0.76rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    input[type=text], input[type=number], input[type=date],
+    input[type=password], select, textarea {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.88rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background: var(--surface);
+      color: var(--text);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(26,92,58,0.12);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+    /* ── Alerts ── */
+    .alert {
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.88rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+    .alert-error { background: var(--danger-light); color: var(--danger); border-left: 3px solid var(--danger); }
+    .alert-success { background: var(--accent-light); color: var(--accent); border-left: 3px solid var(--accent); }
+    .alert-warning { background: var(--warning-light); color: var(--warning); border-left: 3px solid var(--warning); }
+    /* ── Stats row ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .stat-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--text);
+    }
+    .stat-value.danger { color: var(--danger); }
+    .stat-value.accent { color: var(--accent); }
+    /* ── Print ── */
+    @media print {
+      nav, .no-print { display: none !important; }
+      main { padding: 0; max-width: 100%; }
+      .card { box-shadow: none; border: 1px solid #ccc; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if user.is_authenticated %}
+<nav>
+  <div class="nav-brand">
+    Aristoclean
+    <span>Inventory Manager</span>
+  </div>
+  <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+  <a href="{% url 'stock_list' %}" {% if 'stock' in request.resolver_match.url_name %}class="active"{% endif %}>Stock</a>
+  <a href="{% url 'issue_stock' %}" {% if 'issue' in request.resolver_match.url_name %}class="active"{% endif %}>Issue</a>
+  <a href="{% url 'receipts_list' %}" {% if 'receipt' in request.resolver_match.url_name %}class="active"{% endif %}>Receipts</a>
+  <a href="{% url 'reports' %}" {% if 'report' in request.resolver_match.url_name %}class="active"{% endif %}>Reports</a>
+  {% if user.profile.is_manager %}
+  <a href="{% url 'manage_items' %}" {% if 'manage' in request.resolver_match.url_name %}class="active"{% endif %}>Manage</a>
+  {% endif %}
+  <div class="nav-spacer"></div>
+  <span class="nav-user">{{ user.get_full_name|default:user.username }}</span>
+  <a href="{% url 'logout' %}" style="margin-left:0.75rem; font-size:0.75rem; opacity:0.7;">Sign out</a>
+</nav>
+{% endif %}
+
+<main>
+  {% for message in messages %}
+  <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-warning{% endif %}">
+    {{ message }}
+  </div>
+  {% endfor %}
+
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

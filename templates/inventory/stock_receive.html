@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Receive Delivery — Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+  .line-table { width:100%; border-collapse:collapse; }
+  .line-table th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); font-family:'Helvetica Neue',Arial,sans-serif; font-weight:600; padding:0.5rem 0.5rem 0.5rem 0; border-bottom:1px solid var(--border); }
+  .line-table td { padding:0.4rem 0.4rem 0.4rem 0; vertical-align:middle; }
+  .line-table input { margin-bottom:0; }
+  .line-table .col-item { width:35%; }
+  .line-table .col-unit { width:15%; }
+  .line-table .col-reorder { width:15%; }
+  .line-table .col-qty { width:18%; }
+  .line-table .col-del { width:5%; text-align:center; }
+  .del-btn { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1.1rem; padding:0.25rem 0.4rem; border-radius:3px; }
+  .del-btn:hover { color:var(--danger); background:var(--danger-light); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Receive Delivery</h1>
+  <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">← Back to Stock</a>
+</div>
+
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+<form method="post" id="deliveryForm">
+  {% csrf_token %}
+
+  <div class="card">
+    <div class="card-title">Delivery Details</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Supplier</label>
+        {{ header_form.supplier }}
+      </div>
+      <div class="form-group">
+        <label>Reference / PO#</label>
+        {{ header_form.reference }}
+      </div>
+      <div class="form-group">
+        <label>Date Received</label>
+        {{ header_form.received_at }}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      {{ header_form.notes }}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Items</div>
+    <table class="line-table" id="lineTable">
+      <thead>
+        <tr>
+          <th class="col-item">Item Name</th>
+          <th class="col-unit">Unit</th>
+          <th class="col-reorder">Reorder Level</th>
+          <th class="col-qty">Qty Received *</th>
+          <th class="col-del"></th>
+        </tr>
+      </thead>
+      <tbody id="lineBody">
+        <!-- rows injected by JS -->
+      </tbody>
+    </table>
+    <div style="margin-top:1rem;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ Add Item</button>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;gap:1rem;margin-top:0.5rem;">
+    <a href="{% url 'stock_list' %}" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save Delivery</button>
+  </div>
+</form>
+
+<script>
+const ITEMS = {{ items_json|safe }};
+let lineCount = 0;
+
+function itemSuggestions(val) {
+  if (!val) return [];
+  const lower = val.toLowerCase();
+  return ITEMS.filter(i => i.name.toLowerCase().includes(lower)).slice(0, 8);
+}
+
+function addLine(name='', unit='', reorder=0, qty='') {
+  const idx = lineCount++;
+  const tbody = document.getElementById('lineBody');
+  const tr = document.createElement('tr');
+  tr.id = `line_${idx}`;
+  tr.innerHTML = `
+    <td class="col-item">
+      <input type="text" name="line_item_${idx}" value="${name}"
+             placeholder="Item name" autocomplete="off"
+             oninput="handleItemInput(this, ${idx})" required>
+      <div id="suggest_${idx}" style="position:relative"></div>
+    </td>
+    <td class="col-unit">
+      <input type="text" name="line_unit_${idx}" id="unit_${idx}" value="${unit}" placeholder="e.g. rolls">
+    </td>
+    <td class="col-reorder">
+      <input type="number" name="line_reorder_${idx}" id="reorder_${idx}" value="${reorder}" min="0" step="any">
+    </td>
+    <td class="col-qty">
+      <input type="number" name="line_qty_${idx}" value="${qty}" min="0.001" step="any" placeholder="0" required>
+    </td>
+    <td class="col-del">
+      <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">×</button>
+    </td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function removeLine(idx) {
+  const el = document.getElementById(`line_${idx}`);
+  if (el) el.remove();
+}
+
+function handleItemInput(input, idx) {
+  const val = input.value;
+  const box = document.getElementById(`suggest_${idx}`);
+  const matches = itemSuggestions(val);
+  if (!matches.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div style="position:absolute;top:0;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:4px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.1)">
+    ${matches.map(m => `<div onclick="selectItem(${idx},'${m.name.replace(/'/g,"\\'")}','${m.unit}',${m.reorder_level})"
+      style="padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;font-family:'Helvetica Neue',Arial,sans-serif;"
+      onmouseover="this.style.background='#f0f0ec'" onmouseout="this.style.background=''"
+      >${m.name} <span style="color:var(--muted);font-size:0.75rem">${m.unit}</span></div>`).join('')}
+  </div>`;
+}
+
+function selectItem(idx, name, unit, reorder) {
+  document.querySelector(`[name=line_item_${idx}]`).value = name;
+  document.getElementById(`unit_${idx}`).value = unit;
+  document.getElementById(`reorder_${idx}`).value = reorder;
+  document.getElementById(`suggest_${idx}`).innerHTML = '';
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('[id^=suggest_]').forEach(el => el.innerHTML = '');
+});
+
+// Start with 3 empty lines
+addLine(); addLine(); addLine();
+</script>
+{% endblock %}

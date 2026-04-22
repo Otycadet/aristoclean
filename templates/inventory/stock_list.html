@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Stock — Aristoclean{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Stock Levels</h1>
+  <div style="display:flex;gap:0.75rem;">
+    <a href="{% url 'export_stock_csv' %}" class="btn btn-secondary btn-sm">Export CSV</a>
+    <a href="{% url 'stock_receive' %}" class="btn btn-primary btn-sm">+ Receive Delivery</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Unit</th>
+          <th style="text-align:right">Received</th>
+          <th style="text-align:right">Issued</th>
+          <th style="text-align:right">Balance</th>
+          <th style="text-align:right">Reorder</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in stock_data %}
+        <tr>
+          <td><strong>{{ row.item.name }}</strong></td>
+          <td style="color:var(--muted)">{{ row.item.unit }}</td>
+          <td style="text-align:right;color:var(--muted)">{{ row.total_received|floatformat:2 }}</td>
+          <td style="text-align:right;color:var(--muted)">{{ row.total_issued|floatformat:2 }}</td>
+          <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">
+            {% if row.current_stock == row.current_stock|floatformat:0|add:"0" %}
+              {{ row.current_stock|floatformat:0 }}
+            {% else %}
+              {{ row.current_stock|floatformat:2 }}
+            {% endif %}
+          </td>
+          <td style="text-align:right;color:var(--muted)">{{ row.item.reorder_level|floatformat:0 }}</td>
+          <td>
+            {% if row.low %}<span class="badge badge-low">Low Stock</span>
+            {% else %}<span class="badge badge-ok">OK</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted)">
+          No items yet. <a href="{% url 'stock_receive' %}">Record your first delivery →</a>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

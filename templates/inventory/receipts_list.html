@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Receipts — Aristoclean{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Issue Receipts</h1>
+  <a href="{% url 'issue_stock' %}" class="btn btn-primary btn-sm">+ New Issue</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Receipt #</th>
+          <th>Date</th>
+          <th>Location</th>
+          <th>Issued To</th>
+          <th>Issued By</th>
+          <th style="text-align:right">Items</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for batch in batches %}
+        <tr>
+          <td>
+            <a href="{% url 'receipt_detail' batch.receipt_number %}"
+               style="color:var(--accent);font-weight:600;font-family:'Helvetica Neue',Arial,sans-serif;">
+              {{ batch.receipt_number }}
+            </a>
+          </td>
+          <td>{{ batch.issued_at }}</td>
+          <td>{{ batch.location.name }}</td>
+          <td>{{ batch.issued_to|default:"—" }}</td>
+          <td>{{ batch.issued_by|default:"—" }}</td>
+          <td style="text-align:right">{{ batch.line_count }}</td>
+          <td>
+            <a href="{% url 'receipt_detail' batch.receipt_number %}" class="btn btn-secondary btn-sm">View</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted)">
+            No receipts yet. <a href="{% url 'issue_stock' %}">Issue stock to generate one →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

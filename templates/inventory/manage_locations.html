@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Manage Locations — Aristoclean{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Manage Locations</h1>
+  <a href="{% url 'manage_items' %}" class="btn btn-secondary btn-sm">← Manage Items</a>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;align-items:start;">
+  <div class="card">
+    <div class="card-title">Add / Update Location</div>
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="form-group">
+        <label>{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ field.errors.0 }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary" style="width:100%">Save Location</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title">All Locations ({{ locations|length }})</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Active</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for loc in locations %}
+          <tr>
+            <td><strong>{{ loc.name }}</strong></td>
+            <td>{% if loc.active %}<span class="badge badge-ok">Yes</span>{% else %}<span class="badge badge-danger">No</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="2" style="text-align:center;color:var(--muted);padding:2rem">No locations yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

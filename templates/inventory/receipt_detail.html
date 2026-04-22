@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ batch.receipt_number }} — Aristoclean{% endblock %}
+{% block content %}
+<div class="page-header no-print">
+  <h1>{{ batch.receipt_number }}</h1>
+  <div style="display:flex;gap:0.75rem;">
+    <a href="{% url 'receipts_list' %}" class="btn btn-secondary btn-sm">← All Receipts</a>
+    <button onclick="window.print()" class="btn btn-primary btn-sm">🖨 Print</button>
+  </div>
+</div>
+
+<div class="card" id="printable">
+  <!-- Print header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;">
+    <div>
+      <div style="font-size:1.4rem;font-weight:700;font-family:Georgia,serif;color:var(--accent)">Aristoclean</div>
+      <div style="font-size:0.78rem;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif;margin-top:0.2rem">STORE ISSUE RECEIPT</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:1rem;font-weight:700;font-family:'Helvetica Neue',Arial,sans-serif;color:var(--text)">{{ batch.receipt_number }}</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-top:0.25rem">{{ batch.issued_at }}</div>
+    </div>
+  </div>
+
+  <!-- Receipt meta -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);">
+    <div>
+      <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif;font-weight:600;margin-bottom:0.3rem">Location</div>
+      <div style="font-weight:600">{{ batch.location.name }}</div>
+    </div>
+    {% if batch.issued_to %}
+    <div>
+      <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif;font-weight:600;margin-bottom:0.3rem">Issued To</div>
+      <div>{{ batch.issued_to }}</div>
+    </div>
+    {% endif %}
+    {% if batch.issued_by %}
+    <div>
+      <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif;font-weight:600;margin-bottom:0.3rem">Issued By</div>
+      <div>{{ batch.issued_by }}</div>
+    </div>
+    {% endif %}
+    {% if batch.notes %}
+    <div style="grid-column:1/-1">
+      <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif;font-weight:600;margin-bottom:0.3rem">Notes</div>
+      <div>{{ batch.notes }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Line items -->
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Unit</th>
+        <th style="text-align:right">Quantity Issued</th>
+        <th style="text-align:right">Balance After Issue</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td><strong>{{ line.item_name }}</strong></td>
+        <td style="color:var(--muted)">{{ line.unit }}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">
+          {{ line.quantity|floatformat:2 }}
+        </td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)">
+          {{ line.balance_after_issue|floatformat:2 }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Signature block (print) -->
+  <div style="margin-top:3rem;display:grid;grid-template-columns:1fr 1fr;gap:3rem;">
+    <div style="border-top:1px solid var(--border);padding-top:0.5rem;">
+      <div style="font-size:0.75rem;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif">Issued by / Store Keeper</div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:0.5rem;">
+      <div style="font-size:0.75rem;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif">Received by</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

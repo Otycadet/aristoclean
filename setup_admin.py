@@ -1,6 +1,11 @@
-from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
 from inventory.models import UserProfile
+from django.contrib.auth.models import User
+from django.core.management.base import BaseCommand
+import os
+import django
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'aristoclean.settings')
+django.setup()
 
 
 class Command(BaseCommand):
@@ -23,3 +28,8 @@ class Command(BaseCommand):
                 "Superuser created successfully!"))
         else:
             self.stdout.write("Superuser already exists.")
+
+
+if __name__ == '__main__':
+    command = Command()
+    command.handle()

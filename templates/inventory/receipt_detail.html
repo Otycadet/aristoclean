@@ -59,7 +59,6 @@
         <th>Item</th>
         <th>Unit</th>
         <th style="text-align:right">Quantity Issued</th>
-        <th style="text-align:right">Balance After Issue</th>
       </tr>
     </thead>
     <tbody>
@@ -68,7 +67,6 @@
         <td><strong>{{ line.item_name }}</strong></td>
         <td style="color:var(--muted)">{{ line.unit }}</td>
         <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ line.quantity|floatformat:2 }}</td>
-        <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)">{{ line.balance_after_issue|floatformat:2 }}</td>
       </tr>
       {% endfor %}
     </tbody>

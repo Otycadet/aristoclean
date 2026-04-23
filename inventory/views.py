@@ -367,29 +367,17 @@ def receipt_detail(request, receipt_number):
         receipt_number=receipt_number,
     )
     void_form = ReceiptVoidForm()
-    lines_with_balance = []
+    receipt_lines = []
     for line in batch.lines.select_related("item"):
-        issued_up_to = (
-            DistributionLine.objects.filter(item=line.item, batch__is_voided=False)
-            .filter(
-                db_models.Q(batch__issued_at__lt=batch.issued_at)
-                | db_models.Q(batch__issued_at=batch.issued_at, batch__id__lte=batch.id)
-            )
-            .aggregate(total=db_models.Sum("quantity"))["total"]
-            or Decimal("0.00")
-        )
-        total_received = line.item.total_received + line.item.total_adjustments
-        balance = total_received - issued_up_to
-        lines_with_balance.append({
+        receipt_lines.append({
             "item_name": line.item.name,
             "unit": line.item.unit,
             "quantity": line.quantity,
-            "balance_after_issue": balance,
         })
 
     return render(request, "inventory/receipt_detail.html", {
         "batch": batch,
-        "lines": lines_with_balance,
+        "lines": receipt_lines,
         "void_form": void_form,
     })
 

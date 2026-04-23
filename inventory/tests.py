@@ -8,7 +8,7 @@ from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase
 
 from .models import DistributionLine, IssueBatch, Item, Location, StockAdjustment, StockEntry, UserProfile
-from .views import issue_stock, manage_users, reports, stock_adjustment_create, stock_receive, void_receipt
+from .views import issue_stock, manage_users, receipt_detail, reports, stock_adjustment_create, stock_receive, void_receipt
 
 
 class InventoryTestCase(TestCase):
@@ -101,6 +101,26 @@ class InventoryTestCase(TestCase):
         self.assertTrue(batch.is_voided)
         self.assertEqual(batch.void_reason, "Entry duplicated")
         self.assertEqual(self.item.current_stock, Decimal("20.00"))
+
+    def test_receipt_detail_shows_only_issued_quantities(self):
+        batch = IssueBatch.objects.create(
+            location=self.location,
+            issued_to="Cleaning Team",
+            issued_by="Store Keeper",
+            issued_at=date(2026, 4, 22),
+            created_by=self.storekeeper,
+        )
+        DistributionLine.objects.create(batch=batch, item=self.item, quantity=Decimal("6.00"))
+
+        request = self.factory.get(f"/receipts/{batch.receipt_number}/")
+        request.user = self.storekeeper
+        response = receipt_detail(request, batch.receipt_number)
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Quantity Issued", content)
+        self.assertIn("6.00", content)
+        self.assertNotIn("Balance After Issue", content)
 
     def test_stock_adjustment_cannot_make_stock_negative(self):
         request = self.factory.post("/stock/adjust/", data={

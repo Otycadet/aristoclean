@@ -2,19 +2,204 @@
 {% block title %}Receive Delivery - Aristoclean{% endblock %}
 {% block extra_head %}
 <style>
-  .line-table { width:100%; border-collapse:collapse; }
-  .line-table th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); font-family:"Helvetica Neue",Arial,sans-serif; font-weight:600; padding:0.5rem 0.5rem 0.5rem 0; border-bottom:1px solid var(--border); }
-  .line-table td { padding:0.4rem 0.4rem 0.4rem 0; vertical-align:top; }
-  .line-table input, .line-table select { margin-bottom:0; }
-  .line-table .col-item { width:42%; }
-  .line-table .col-unit { width:15%; }
-  .line-table .col-reorder { width:15%; }
-  .line-table .col-qty { width:18%; }
-  .line-table .col-del { width:5%; text-align:center; }
-  .del-btn { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1.1rem; padding:0.25rem 0.4rem; border-radius:3px; }
-  .del-btn:hover { color:var(--danger); background:var(--danger-light); }
-  .line-item-stack { display:flex; flex-direction:column; gap:0.45rem; }
-  .field-hint { font-size:0.74rem; color:var(--muted); font-family:"Helvetica Neue",Arial,sans-serif; }
+  .items-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .items-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .items-copy {
+    max-width: 720px;
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+  }
+
+  .line-count-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .line-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .line-card {
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 2px);
+    background: linear-gradient(180deg, #fff 0%, #fcfbf8 100%);
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .line-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .line-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .line-card-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2.2fr) repeat(3, minmax(140px, 1fr));
+    gap: 0.9rem 1rem;
+    align-items: start;
+  }
+
+  .line-field label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+  }
+
+  .line-field input,
+  .line-field select {
+    margin-bottom: 0;
+  }
+
+  .line-field-wide {
+    grid-column: span 1;
+  }
+
+  .item-input-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+  }
+
+  .item-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.55rem;
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-size: 0.72rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .field-hint {
+    font-size: 0.76rem;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.45;
+  }
+
+  .field-hint strong {
+    color: var(--text);
+  }
+
+  .qty-field input,
+  .reorder-field input {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .del-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1.15rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+  }
+
+  .del-btn:hover {
+    color: var(--danger);
+    background: var(--danger-light);
+  }
+
+  .items-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .empty-lines {
+    padding: 1.1rem 1rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    text-align: center;
+  }
+
+  @media (max-width: 880px) {
+    .line-card-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .line-field-wide {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .line-card {
+      padding: 0.9rem;
+    }
+
+    .line-card-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -54,21 +239,27 @@
   </div>
 
   <div class="card">
-    <div class="card-title">Items</div>
-    <table class="line-table">
-      <thead>
-        <tr>
-          <th class="col-item">Item</th>
-          <th class="col-unit">Unit</th>
-          <th class="col-reorder">Reorder Level</th>
-          <th class="col-qty">Qty Received</th>
-          <th class="col-del"></th>
-        </tr>
-      </thead>
-      <tbody id="lineBody"></tbody>
-    </table>
-    <div style="margin-top:1rem;">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">Add Item</button>
+    <div class="items-shell">
+      <div class="items-topbar">
+        <div>
+          <div class="card-title">Items</div>
+          <p class="items-copy">
+            Add each delivery line as a separate card. Choose an item already in stock or type a new item name,
+            then confirm its unit, reorder level, and quantity received.
+          </p>
+        </div>
+        <span class="line-count-pill" id="lineCountPill">0 Lines</span>
+      </div>
+
+      <div id="lineBody" class="line-list"></div>
+      <div id="emptyLines" class="empty-lines" hidden>No item lines yet. Add a line to start recording this delivery.</div>
+
+      <div class="items-actions">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">Add Item</button>
+        <div class="field-hint">
+          <strong>Tip:</strong> selecting an existing item fills in its saved unit and reorder level automatically.
+        </div>
+      </div>
     </div>
   </div>
 
@@ -93,66 +284,118 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function addLine(name='', unit='', reorder=0, qty='') {
+function addLine(name = '', unit = '', reorder = 0, qty = '') {
   const idx = lineCount++;
-  const tbody = document.getElementById('lineBody');
-  const tr = document.createElement('tr');
-  tr.id = `line_${idx}`;
-  tr.innerHTML = `
-    <td class="col-item">
-      <div class="line-item-stack">
-        <select name="line_item_${idx}" id="item_select_${idx}" onchange="selectExistingItem(${idx}, this.value)">
-          <option value="">Select existing item</option>
-          ${ITEM_OPTIONS}
-        </select>
-        <input type="text" name="line_new_item_${idx}" id="new_item_${idx}" value="${escapeHtml(name)}" placeholder="Or enter a new item name" oninput="handleNewItemInput(${idx})">
-        <div class="field-hint">Choose from the dropdown for stocked items, or type a new item name if it is not in the list.</div>
+  const container = document.getElementById('lineBody');
+  const card = document.createElement('div');
+  card.className = 'line-card';
+  card.id = `line_${idx}`;
+  card.innerHTML = `
+    <div class="line-card-head">
+      <span class="line-badge" data-line-badge>Line ${container.children.length + 1}</span>
+      <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">&times;</button>
+    </div>
+    <div class="line-card-grid">
+      <div class="line-field line-field-wide">
+        <label for="item_select_${idx}">Item Selection</label>
+        <div class="item-input-stack">
+          <select name="line_item_${idx}" id="item_select_${idx}" onchange="selectExistingItem(${idx}, this.value)">
+            <option value="">Select existing item</option>
+            ${ITEM_OPTIONS}
+          </select>
+          <input type="text" name="line_new_item_${idx}" id="new_item_${idx}" value="${escapeHtml(name)}" placeholder="Or enter a new item name" oninput="handleNewItemInput(${idx})">
+          <div class="item-meta">
+            <span class="item-meta-chip" id="source_chip_${idx}">New or existing item</span>
+            <span class="item-meta-chip" id="saved_meta_${idx}">Manual values allowed</span>
+          </div>
+          <div class="field-hint">Use the dropdown for stocked items, or type a new item name if it is not in the list.</div>
+        </div>
       </div>
-    </td>
-    <td class="col-unit">
-      <input type="text" name="line_unit_${idx}" id="unit_${idx}" value="${escapeHtml(unit)}" placeholder="e.g. packs">
-    </td>
-    <td class="col-reorder">
-      <input type="number" name="line_reorder_${idx}" id="reorder_${idx}" value="${reorder}" min="0" step="0.01">
-    </td>
-    <td class="col-qty">
-      <input type="number" name="line_qty_${idx}" value="${qty}" min="0.01" step="0.01" placeholder="0.00">
-    </td>
-    <td class="col-del">
-      <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">x</button>
-    </td>
+
+      <div class="line-field">
+        <label for="unit_${idx}">Unit</label>
+        <input type="text" name="line_unit_${idx}" id="unit_${idx}" value="${escapeHtml(unit)}" placeholder="e.g. packs">
+      </div>
+
+      <div class="line-field reorder-field">
+        <label for="reorder_${idx}">Reorder Level</label>
+        <input type="number" name="line_reorder_${idx}" id="reorder_${idx}" value="${reorder}" min="0" step="0.01" placeholder="0.00">
+      </div>
+
+      <div class="line-field qty-field">
+        <label for="qty_${idx}">Qty Received</label>
+        <input type="number" name="line_qty_${idx}" id="qty_${idx}" value="${qty}" min="0.01" step="0.01" placeholder="0.00">
+      </div>
+    </div>
   `;
-  tbody.appendChild(tr);
+  container.appendChild(card);
+  refreshLineMeta();
 }
 
 function removeLine(idx) {
   const el = document.getElementById(`line_${idx}`);
-  if (el) el.remove();
+  if (el) {
+    el.remove();
+    refreshLineMeta();
+  }
+}
+
+function refreshLineMeta() {
+  const cards = Array.from(document.querySelectorAll('.line-card'));
+  cards.forEach((card, index) => {
+    const badge = card.querySelector('[data-line-badge]');
+    if (badge) {
+      badge.textContent = `Line ${index + 1}`;
+    }
+  });
+
+  const count = cards.length;
+  document.getElementById('lineCountPill').textContent = `${count} ${count === 1 ? 'Line' : 'Lines'}`;
+  document.getElementById('emptyLines').hidden = count !== 0;
 }
 
 function selectExistingItem(idx, itemId) {
   const newItemInput = document.getElementById(`new_item_${idx}`);
+  const sourceChip = document.getElementById(`source_chip_${idx}`);
+  const savedMeta = document.getElementById(`saved_meta_${idx}`);
+
   if (!itemId) {
+    sourceChip.textContent = 'New or existing item';
+    savedMeta.textContent = 'Manual values allowed';
     return;
   }
 
   const item = ITEMS.find(entry => String(entry.id) === String(itemId));
   if (!item) {
+    sourceChip.textContent = 'New or existing item';
+    savedMeta.textContent = 'Manual values allowed';
     return;
   }
 
   newItemInput.value = '';
   document.getElementById(`unit_${idx}`).value = item.unit;
   document.getElementById(`reorder_${idx}`).value = item.reorder_level;
+  sourceChip.textContent = 'Using stocked item';
+  savedMeta.textContent = `${item.unit} | reorder ${Number(item.reorder_level).toFixed(2)}`;
 }
 
 function handleNewItemInput(idx) {
   const newItemInput = document.getElementById(`new_item_${idx}`);
+  const sourceChip = document.getElementById(`source_chip_${idx}`);
+  const savedMeta = document.getElementById(`saved_meta_${idx}`);
+
   if (newItemInput.value.trim()) {
     document.getElementById(`item_select_${idx}`).value = '';
+    sourceChip.textContent = 'Creating new item';
+    savedMeta.textContent = 'Set unit and reorder level below';
+  } else {
+    sourceChip.textContent = 'New or existing item';
+    savedMeta.textContent = 'Manual values allowed';
   }
 }
 
-addLine(); addLine(); addLine();
+addLine();
+addLine();
+addLine();
 </script>
 {% endblock %}

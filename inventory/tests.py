@@ -7,13 +7,17 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase
 
+from .forms import UserCreateForm, UserUpdateForm
 from .models import DistributionLine, IssueBatch, Item, Location, StockAdjustment, StockEntry, UserProfile
 from .views import (
+    export_csv,
     issue_stock,
+    low_stock_report,
     manage_items,
     manage_locations,
     manage_users,
     receipt_detail,
+    reorder_list,
     reports,
     stock_adjustment_create,
     stock_receive,
@@ -69,6 +73,27 @@ class InventoryTestCase(TestCase):
         request.user = self.storekeeper
         with self.assertRaises(PermissionDenied):
             reports(request)
+
+        request = self.factory.get("/stock/reorder/")
+        request.user = self.storekeeper
+        with self.assertRaises(PermissionDenied):
+            reorder_list(request)
+
+        request = self.factory.get("/stock/low/")
+        request.user = self.storekeeper
+        with self.assertRaises(PermissionDenied):
+            low_stock_report(request)
+
+    def test_manager_can_open_reorder_pages(self):
+        request = self.factory.get("/stock/reorder/")
+        request.user = self.manager
+        response = reorder_list(request)
+        self.assertEqual(response.status_code, 200)
+
+        request = self.factory.get("/stock/low/")
+        request.user = self.manager
+        response = low_stock_report(request)
+        self.assertEqual(response.status_code, 200)
 
     def test_issue_cannot_reduce_stock_below_zero(self):
         request = self.factory.post("/issue/", data={
@@ -250,3 +275,49 @@ class InventoryTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
         self.location.refresh_from_db()
         self.assertEqual(self.location.name, "Head Office Store")
+
+    def test_user_create_form_rejects_weak_password(self):
+        form = UserCreateForm(data={
+            "username": "newuser",
+            "first_name": "New",
+            "last_name": "User",
+            "email": "new@example.com",
+            "role": UserProfile.ROLE_STOREKEEPER,
+            "password1": "password123",
+            "password2": "password123",
+            "active": "on",
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("password1", form.errors)
+
+    def test_user_update_form_rejects_weak_password_reset(self):
+        form = UserUpdateForm(data={
+            "first_name": self.storekeeper.first_name,
+            "last_name": self.storekeeper.last_name,
+            "email": self.storekeeper.email,
+            "role": UserProfile.ROLE_STOREKEEPER,
+            "active": "on",
+            "new_password": "password123",
+        }, instance=self.storekeeper)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("new_password", form.errors)
+
+    def test_export_csv_sanitizes_formula_like_values(self):
+        dangerous_item = Item.objects.create(name="=2+3", unit="@pcs", reorder_level=Decimal("1.00"))
+        StockEntry.objects.create(
+            item=dangerous_item,
+            quantity=Decimal("5.00"),
+            received_at=date(2026, 4, 22),
+            created_by=self.manager,
+        )
+        request = self.factory.get("/stock/export/")
+        request.user = self.manager
+
+        response = export_csv(request)
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("'=2+3", content)
+        self.assertIn("'@pcs", content)

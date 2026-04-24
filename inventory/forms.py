@@ -1,7 +1,9 @@
 from decimal import Decimal
 
 from django import forms
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from .models import Item, Location, StockAdjustment, UserProfile
@@ -184,12 +186,24 @@ class UserCreateForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        password = cleaned_data.get("password1")
         if (
-            cleaned_data.get("password1")
+            password
             and cleaned_data.get("password2")
-            and cleaned_data["password1"] != cleaned_data["password2"]
+            and password != cleaned_data["password2"]
         ):
             self.add_error("password2", "Passwords do not match.")
+        elif password:
+            user = User(
+                username=cleaned_data.get("username", "").strip(),
+                first_name=cleaned_data.get("first_name", ""),
+                last_name=cleaned_data.get("last_name", ""),
+                email=cleaned_data.get("email", ""),
+            )
+            try:
+                validate_password(password, user=user)
+            except ValidationError as exc:
+                self.add_error("password1", exc)
         return cleaned_data
 
     def save(self, commit=True):
@@ -229,12 +243,20 @@ class UserUpdateForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.is_active = self.cleaned_data["active"]
+        password = self.cleaned_data.get("new_password")
         if commit:
             user.save()
-            if self.cleaned_data.get("new_password"):
-                user.set_password(self.cleaned_data["new_password"])
+            if password:
+                user.set_password(password)
                 user.save(update_fields=["password"])
             profile, _ = UserProfile.objects.get_or_create(user=user)
             profile.role = self.cleaned_data["role"]
             profile.save()
         return user
+
+    def clean_new_password(self):
+        password = self.cleaned_data.get("new_password")
+        if not password:
+            return password
+        validate_password(password, user=self.instance)
+        return password

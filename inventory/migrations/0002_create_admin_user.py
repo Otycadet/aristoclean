@@ -1,31 +1,16 @@
-# Generated migration for creating initial admin user
-
 from django.db import migrations
 
 
-def create_admin_user(apps, schema_editor):
-    """Create initial admin/manager user if it doesn't exist."""
-    USERNAME = 'management'
-    PASSWORD = 'password123'
-    EMAIL = 'admin@aristoclean.com'
+def noop_forward(apps, schema_editor):
+    """Historical placeholder.
 
-    User = apps.get_model('auth', 'User')
-
-    # Only create if user doesn't exist
-    if not User.objects.filter(username=USERNAME).exists():
-        user = User.objects.create_superuser(USERNAME, EMAIL, PASSWORD)
-
-        # Assign manager role
-        UserProfile = apps.get_model('inventory', 'UserProfile')
-        profile, _ = UserProfile.objects.get_or_create(user=user)
-        profile.role = 'manager'
-        profile.save()
+    Fresh installs must create an admin explicitly with `createsuperuser`.
+    """
+    return None
 
 
-def reverse_admin_user(apps, schema_editor):
-    """Remove the admin user if it was created by this migration."""
-    User = apps.get_model('auth', 'User')
-    User.objects.filter(username='management').delete()
+def noop_reverse(apps, schema_editor):
+    return None
 
 
 class Migration(migrations.Migration):
@@ -35,5 +20,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(create_admin_user, reverse_admin_user),
+        migrations.RunPython(noop_forward, noop_reverse),
     ]

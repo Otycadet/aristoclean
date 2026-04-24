@@ -29,7 +29,9 @@
 {% if low_stock_count > 0 %}
 <div class="alert alert-warning">
   {{ low_stock_count }} item{{ low_stock_count|pluralize }} are at or below reorder level.
+  {% if user.is_superuser or user.profile.is_manager %}
   <a href="{% url 'low_stock_report' %}" style="font-weight:600;">Open reorder list</a>
+  {% endif %}
 </div>
 {% endif %}
 

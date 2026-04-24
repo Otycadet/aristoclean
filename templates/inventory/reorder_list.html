@@ -150,9 +150,11 @@
 </div>
 {% endif %}
 
+{{ items_data|json_script:"reorder-items" }}
+{{ reorder_lines_data|json_script:"reorder-lines" }}
 <script>
-    const ITEMS = {{ items_json|safe }};
-    const PRESET_LINES = {{ reorder_lines_json|default:'[]'|safe }};
+    const ITEMS = JSON.parse(document.getElementById('reorder-items').textContent);
+    const PRESET_LINES = JSON.parse(document.getElementById('reorder-lines').textContent);
     const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
     let lineCount = 0;
 

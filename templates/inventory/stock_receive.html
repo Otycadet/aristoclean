@@ -78,8 +78,9 @@
   </div>
 </form>
 
+{{ items_data|json_script:"stock-receive-items" }}
 <script>
-const ITEMS = {{ items_json|safe }};
+const ITEMS = JSON.parse(document.getElementById('stock-receive-items').textContent);
 const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
 let lineCount = 0;
 

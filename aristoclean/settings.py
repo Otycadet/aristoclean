@@ -7,12 +7,21 @@ locally (via .env) and on Railway / Render in production.
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
+
 # ── Paths ──────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 # ── Security ───────────────────────────────────────────────────────────────
-SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "dev-only-insecure-secret-key"
+    else:
+        raise ImproperlyConfigured("Set the SECRET_KEY environment variable in production.")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost 127.0.0.1").split()
 
 # Allow Railway / Render auto-generated domains without listing them explicitly
@@ -91,6 +100,9 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 SESSION_COOKIE_AGE = int(os.environ.get("SESSION_COOKIE_AGE", "1200"))
 SESSION_SAVE_EVERY_REQUEST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 # ── Internationalisation ───────────────────────────────────────────────────
 LANGUAGE_CODE = "en-us"

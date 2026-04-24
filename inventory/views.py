@@ -1,5 +1,4 @@
 import csv
-import json
 import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -9,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db import models as db_models
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import DecimalField, ExpressionWrapper, F, OuterRef, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse, JsonResponse
@@ -83,7 +82,7 @@ def _decimal_from_post(value, field_name):
 
 
 def _serialize_items_for_js(items_queryset):
-    return json.dumps([
+    return [
         {
             "id": item.id,
             "name": item.name,
@@ -92,7 +91,34 @@ def _serialize_items_for_js(items_queryset):
             "stock": float(getattr(item, "current_stock_db", item.current_stock)),
         }
         for item in items_queryset
-    ])
+    ]
+
+
+def _serialize_reorder_lines(reorder_lines):
+    return [
+        {
+            "item_id": str(line["item"].pk),
+            "quantity": float(line["quantity"]),
+        }
+        for line in reorder_lines
+    ]
+
+
+def _safe_csv_cell(value):
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        return value
+    if value.lstrip().startswith(("=", "+", "-", "@")):
+        return f"'{value}"
+    return value
+
+
+def _lock_items_for_update(item_ids):
+    normalized_ids = sorted({int(item_id) for item_id in item_ids})
+    if not normalized_ids:
+        return Item.objects.none()
+    return Item.objects.select_for_update().filter(pk__in=normalized_ids).order_by("pk")
 
 
 def _display_name_for_user(user):
@@ -153,6 +179,7 @@ def stock_list(request):
 
 
 @login_required
+@manager_required
 def reorder_list(request):
     items_qs = _annotate_item_stock(
         Item.objects.filter(active=True)).order_by("name")
@@ -170,13 +197,9 @@ def reorder_list(request):
             error = str(exc)
 
     return render(request, "inventory/reorder_list.html", {
-        "items_json": _serialize_items_for_js(items_qs),
+        "items_data": _serialize_items_for_js(items_qs),
         "reorder_lines": reorder_lines or [],
-        "reorder_lines_json": json.dumps([
-            {"item_id": str(line["item"].pk),
-             "quantity": float(line["quantity"])}
-            for line in (reorder_lines or [])
-        ]),
+        "reorder_lines_data": _serialize_reorder_lines(reorder_lines or []),
         "error": error,
     })
 
@@ -230,26 +253,35 @@ def stock_receive(request):
         Item.objects.filter(active=True)).order_by("name")
     return render(request, "inventory/stock_receive.html", {
         "header_form": header_form,
-        "items_json": _serialize_items_for_js(items_qs),
+        "items_data": _serialize_items_for_js(items_qs),
         "error": error,
         "received_by_name": received_by_name,
     })
 
 
 def _get_or_create_item(name: str, unit: str, reorder_level: Decimal) -> Item:
+    normalized_name = name.strip()
     try:
-        item = Item.objects.get(name__iexact=name)
+        item = Item.objects.select_for_update().get(name__iexact=normalized_name)
         item.unit = unit
         item.reorder_level = reorder_level
         item.active = True
         item.save(update_fields=["unit", "reorder_level", "active"])
         return item
     except Item.DoesNotExist:
-        return Item.objects.create(
-            name=name,
-            unit=unit,
-            reorder_level=reorder_level,
-        )
+        try:
+            return Item.objects.create(
+                name=normalized_name,
+                unit=unit,
+                reorder_level=reorder_level,
+            )
+        except IntegrityError:
+            item = Item.objects.select_for_update().get(name__iexact=normalized_name)
+            item.unit = unit
+            item.reorder_level = reorder_level
+            item.active = True
+            item.save(update_fields=["unit", "reorder_level", "active"])
+            return item
 
 
 def _parse_delivery_lines(post_data):
@@ -375,7 +407,7 @@ def issue_stock(request):
         Item.objects.filter(active=True)).order_by("name")
     return render(request, "inventory/issue_stock.html", {
         "header_form": header_form,
-        "items_json": _serialize_items_for_js(items_qs),
+        "items_data": _serialize_items_for_js(items_qs),
         "error": error,
         "issued_by_name": issued_by_name,
     })
@@ -413,7 +445,7 @@ def _create_issue_batch(hd: dict, lines: list, user) -> IssueBatch:
 
     annotated_items = {
         item.pk: item
-        for item in _annotate_item_stock(Item.objects.filter(pk__in=grouped.keys()))
+        for item in _annotate_item_stock(_lock_items_for_update(grouped.keys()))
     }
 
     validated = []
@@ -508,13 +540,18 @@ def receipt_detail(request, receipt_number):
 @manager_required
 @transaction.atomic
 def void_receipt(request, receipt_number):
-    batch = get_object_or_404(IssueBatch, receipt_number=receipt_number)
+    batch = get_object_or_404(
+        IssueBatch.objects.select_for_update().prefetch_related("lines"),
+        receipt_number=receipt_number,
+    )
     if request.method != "POST":
         return redirect("receipt_detail", receipt_number=receipt_number)
     if batch.is_voided:
         messages.warning(
             request, f"Receipt {batch.receipt_number} is already voided.")
         return redirect("receipt_detail", receipt_number=receipt_number)
+
+    _lock_items_for_update(batch.lines.values_list("item_id", flat=True))
 
     form = ReceiptVoidForm(request.POST)
     if not form.is_valid():
@@ -612,8 +649,8 @@ def export_csv(request):
         shortfall = max(item.reorder_level -
                         item.current_stock_db, Decimal("0.00"))
         writer.writerow([
-            item.name,
-            item.unit,
+            _safe_csv_cell(item.name),
+            _safe_csv_cell(item.unit),
             f"{item.current_stock_db:,.2f}",
             f"{item.reorder_level:,.2f}",
             f"{shortfall:,.2f}",
@@ -667,20 +704,21 @@ def export_report_csv(request):
     )
     for line in qs:
         writer.writerow([
-            line.batch.receipt_number,
+            _safe_csv_cell(line.batch.receipt_number),
             line.batch.issued_at,
-            line.batch.location.name,
-            line.item.name,
+            _safe_csv_cell(line.batch.location.name),
+            _safe_csv_cell(line.item.name),
             f"{line.quantity:,.2f}",
-            line.item.unit,
-            line.batch.issued_to,
-            line.batch.issued_by,
-            line.batch.notes,
+            _safe_csv_cell(line.item.unit),
+            _safe_csv_cell(line.batch.issued_to),
+            _safe_csv_cell(line.batch.issued_by),
+            _safe_csv_cell(line.batch.notes),
         ])
     return response
 
 
 @login_required
+@manager_required
 def low_stock_report(request):
     items = _annotate_item_stock(
         Item.objects.filter(active=True)).order_by("name")
@@ -692,6 +730,7 @@ def low_stock_report(request):
 
 
 @login_required
+@manager_required
 def export_low_stock_csv(request):
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = (
@@ -703,8 +742,8 @@ def export_low_stock_csv(request):
     for item in _annotate_item_stock(Item.objects.filter(active=True)).order_by("name"):
         if item.current_stock_db <= item.reorder_level:
             writer.writerow([
-                item.name,
-                item.unit,
+                _safe_csv_cell(item.name),
+                _safe_csv_cell(item.unit),
                 f"{item.current_stock_db:,.2f}",
                 f"{item.reorder_level:,.2f}",
                 f"{max(item.reorder_level - item.current_stock_db, Decimal('0.00')):,.2f}",
@@ -721,17 +760,19 @@ def stock_adjustment_create(request):
         adjustment.quantity_delta = form.cleaned_data["quantity_delta"]
         adjustment.created_by = request.user
 
-        item_with_stock = _annotate_item_stock(
-            Item.objects.filter(pk=adjustment.item_id)).get()
-        projected_stock = item_with_stock.current_stock_db + adjustment.quantity_delta
-        if projected_stock < Decimal("0.00"):
-            form.add_error(
-                "quantity", f"This adjustment would reduce {adjustment.item.name} below zero stock.")
-        else:
-            adjustment.save()
-            messages.success(
-                request, f"Stock adjustment recorded for {adjustment.item.name}.")
-            return redirect("stock_list")
+        with transaction.atomic():
+            item_with_stock = _annotate_item_stock(
+                _lock_items_for_update([adjustment.item_id])
+            ).get()
+            projected_stock = item_with_stock.current_stock_db + adjustment.quantity_delta
+            if projected_stock < Decimal("0.00"):
+                form.add_error(
+                    "quantity", f"This adjustment would reduce {adjustment.item.name} below zero stock.")
+            else:
+                adjustment.save()
+                messages.success(
+                    request, f"Stock adjustment recorded for {adjustment.item.name}.")
+                return redirect("stock_list")
 
     adjustments = StockAdjustment.objects.select_related(
         "item", "created_by").order_by("-adjusted_at", "-id")[:20]

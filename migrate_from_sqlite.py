@@ -23,6 +23,10 @@ from inventory.models import Item, Location, StockEntry, IssueBatch, Distributio
 from django.db import transaction
 
 
+def row_value(row, key, default=None):
+    return row[key] if key in row.keys() and row[key] is not None else default
+
+
 def run(source_db_path: str):
     print(f"Opening source database: {source_db_path}")
     conn = sqlite3.connect(source_db_path)
@@ -38,7 +42,7 @@ def run(source_db_path: str):
                 defaults={
                     "unit": row["unit"],
                     "reorder_level": row["reorder_level"] or 0,
-                    "active": bool(row.get("active", 1)),
+                    "active": bool(row_value(row, "active", 1)),
                 },
             )
             item_map[row["id"]] = item
@@ -50,7 +54,7 @@ def run(source_db_path: str):
         for row in conn.execute("SELECT * FROM locations"):
             loc, _ = Location.objects.get_or_create(
                 name=row["name"],
-                defaults={"active": bool(row.get("active", 1))},
+                defaults={"active": bool(row_value(row, "active", 1))},
             )
             loc_map[row["id"]] = loc
         print(f"  {len(loc_map)} locations done.")
@@ -68,9 +72,9 @@ def run(source_db_path: str):
                 received_at=row["received_at"][:10],  # DATE portion
                 quantity=row["quantity"],
                 defaults={
-                    "supplier": row.get("supplier") or "",
-                    "reference": row.get("reference") or "",
-                    "notes": row.get("notes") or "",
+                    "supplier": row_value(row, "supplier", ""),
+                    "reference": row_value(row, "reference", ""),
+                    "notes": row_value(row, "notes", ""),
                 },
             )
             se_count += 1
@@ -86,15 +90,15 @@ def run(source_db_path: str):
                 # create a placeholder location
                 loc, _ = Location.objects.get_or_create(name=f"Unknown-{row['location_id']}")
 
-            issued_at = (row.get("issued_at") or row.get("created_at") or "")[:10]
+            issued_at = (row_value(row, "issued_at", "") or row_value(row, "created_at", "") or "")[:10]
 
             batch, created = IssueBatch.objects.get_or_create(
                 receipt_number=row["receipt_number"],
                 defaults={
                     "location": loc,
-                    "issued_to": row.get("issued_to") or "",
-                    "issued_by": row.get("issued_by") or "",
-                    "notes": row.get("notes") or "",
+                    "issued_to": row_value(row, "issued_to", ""),
+                    "issued_by": row_value(row, "issued_by", ""),
+                    "notes": row_value(row, "notes", ""),
                     "issued_at": issued_at,
                 },
             )

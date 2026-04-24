@@ -75,8 +75,9 @@
   </div>
 </form>
 
+{{ items_data|json_script:"issue-stock-items" }}
 <script>
-const ITEMS = {{ items_json|safe }};
+const ITEMS = JSON.parse(document.getElementById('issue-stock-items').textContent);
 const ITEM_MAP = {};
 ITEMS.forEach(item => { ITEM_MAP[item.id] = item; });
 let lineCount = 0;

@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.core.exceptions import PermissionDenied
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 
 from .forms import UserCreateForm, UserUpdateForm
 from .models import DistributionLine, IssueBatch, Item, Location, StockAdjustment, StockEntry, UserProfile
@@ -94,6 +94,22 @@ class InventoryTestCase(TestCase):
         request.user = self.manager
         response = low_stock_report(request)
         self.assertEqual(response.status_code, 200)
+
+    @override_settings(DEBUG=False)
+    def test_custom_404_page_is_rendered(self):
+        response = self.client.get("/missing-page/")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertContains(response, "Page Not Found")
+
+    @override_settings(DEBUG=False)
+    def test_custom_403_page_is_rendered(self):
+        self.client.force_login(self.storekeeper)
+
+        response = self.client.get("/reports/")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, "Access Denied")
 
     def test_issue_cannot_reduce_stock_below_zero(self):
         request = self.factory.post("/issue/", data={

@@ -22,13 +22,13 @@
         </tr>
       </thead>
       <tbody>
-        {% for item in low_stock_items %}
+        {% for row in low_stock_items %}
         <tr>
-          <td><strong>{{ item.name }}</strong></td>
-          <td>{{ item.unit }}</td>
-          <td style="text-align:right">{{ item.current_stock_db|floatformat:2 }}</td>
-          <td style="text-align:right">{{ item.reorder_level|floatformat:2 }}</td>
-          <td style="text-align:right">{{ item.reorder_shortfall|floatformat:2 }}</td>
+          <td><strong>{{ row.item.name }}</strong></td>
+          <td>{{ row.item.unit }}</td>
+          <td style="text-align:right">{{ row.current_stock|floatformat:2 }}</td>
+          <td style="text-align:right">{{ row.item.reorder_level|floatformat:2 }}</td>
+          <td style="text-align:right">{{ row.reorder_shortfall|floatformat:2 }}</td>
         </tr>
         {% empty %}
         <tr><td colspan="5" style="text-align:center;padding:2.5rem;color:var(--muted)">No low-stock items right now.</td></tr>

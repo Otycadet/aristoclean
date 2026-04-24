@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Access Denied - Aristoclean{% endblock %}
+{% block content %}
+<div class="card" style="max-width:720px; margin:3rem auto; text-align:center;">
+  <div class="card-title">403 Error</div>
+  <h1 style="margin-bottom:0.75rem;">Access Denied</h1>
+  <p style="color:var(--muted); margin-bottom:1.5rem;">
+    You do not have permission to open this page.
+  </p>
+  <a href="{% url 'dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+</div>
+{% endblock %}

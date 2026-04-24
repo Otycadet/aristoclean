@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign In — Aristoclean Inventory</title>
+  <title>Sign In - Aristoclean Inventory</title>
   <style>
     :root {
       --accent: #1a5c3a;
@@ -13,7 +13,7 @@
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: "Helvetica Neue", Arial, sans-serif;
       background: #f5f4f0;
       min-height: 100vh;
       display: flex;
@@ -35,29 +35,56 @@
       color: var(--accent);
       font-weight: 700;
     }
-    .brand p { font-size: 0.8rem; color: #888; margin-top: 0.3rem; letter-spacing: 0.05em; text-transform: uppercase; }
+    .brand p {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 0.3rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
     .card {
       background: #fff;
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 2rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
     }
     .form-group { margin-bottom: 1.1rem; }
-    label { display: block; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #666; margin-bottom: 0.35rem; }
+    label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #666;
+      margin-bottom: 0.35rem;
+    }
     input {
-      width: 100%; padding: 0.6rem 0.75rem;
-      border: 1px solid var(--border); border-radius: var(--radius);
-      font-size: 0.9rem; font-family: inherit;
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-family: inherit;
       transition: border-color 0.15s, box-shadow 0.15s;
     }
-    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,92,58,0.12); }
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(26, 92, 58, 0.12);
+    }
     button {
-      width: 100%; padding: 0.7rem;
-      background: var(--accent); color: #fff;
-      border: none; border-radius: var(--radius);
-      font-size: 0.88rem; font-weight: 600; font-family: inherit;
-      cursor: pointer; letter-spacing: 0.03em;
+      width: 100%;
+      padding: 0.7rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.88rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: 0.03em;
       transition: background 0.15s;
       margin-top: 0.5rem;
     }

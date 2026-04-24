@@ -1,5 +1,6 @@
 import csv
 import json
+import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -213,20 +214,47 @@ def _get_or_create_item(name: str, unit: str, reorder_level: Decimal) -> Item:
 
 def _parse_delivery_lines(post_data):
     lines = []
-    index = 0
-    while f"line_item_{index}" in post_data:
-        name = post_data.get(f"line_item_{index}", "").strip()
+    line_indices = sorted({
+        int(match.group(1))
+        for key in post_data.keys()
+        for match in [re.match(r"^line_(?:item|new_item|unit|reorder|qty)_(\d+)$", key)]
+        if match
+    })
+
+    for index in line_indices:
+        existing_item_id = post_data.get(f"line_item_{index}", "").strip()
+        new_name = post_data.get(f"line_new_item_{index}", "").strip()
         unit = post_data.get(f"line_unit_{index}", "").strip()
         reorder = post_data.get(f"line_reorder_{index}", "0").strip() or "0"
         qty = post_data.get(f"line_qty_{index}", "").strip()
-        if name and qty:
-            lines.append({
-                "item_name": name,
-                "unit": unit or "units",
-                "reorder_level": _decimal_from_post(reorder, f"reorder level for {name}"),
-                "quantity": _decimal_from_post(qty, f"quantity for {name}"),
-            })
-        index += 1
+
+        if not any([existing_item_id, new_name, unit, reorder, qty]):
+            continue
+        if not qty:
+            raise ValueError("Enter quantity for each delivery line you add.")
+
+        if existing_item_id:
+            try:
+                item = Item.objects.get(pk=int(existing_item_id), active=True)
+            except (Item.DoesNotExist, ValueError):
+                raise ValueError("Select a valid active item from the dropdown.")
+            item_name = item.name
+            unit = unit or item.unit
+            reorder_value = _decimal_from_post(reorder, f"reorder level for {item_name}")
+        else:
+            if not new_name:
+                raise ValueError("Each delivery line must select an existing item or enter a new item name.")
+            item_name = new_name
+            unit = unit or "units"
+            reorder_value = _decimal_from_post(reorder, f"reorder level for {item_name}")
+
+        lines.append({
+            "item_name": item_name,
+            "unit": unit,
+            "reorder_level": reorder_value,
+            "quantity": _decimal_from_post(qty, f"quantity for {item_name}"),
+        })
+
     return lines if lines else None
 
 

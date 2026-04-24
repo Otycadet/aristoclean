@@ -4,15 +4,17 @@
 <style>
   .line-table { width:100%; border-collapse:collapse; }
   .line-table th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); font-family:"Helvetica Neue",Arial,sans-serif; font-weight:600; padding:0.5rem 0.5rem 0.5rem 0; border-bottom:1px solid var(--border); }
-  .line-table td { padding:0.4rem 0.4rem 0.4rem 0; vertical-align:middle; }
-  .line-table input { margin-bottom:0; }
-  .line-table .col-item { width:35%; }
+  .line-table td { padding:0.4rem 0.4rem 0.4rem 0; vertical-align:top; }
+  .line-table input, .line-table select { margin-bottom:0; }
+  .line-table .col-item { width:42%; }
   .line-table .col-unit { width:15%; }
   .line-table .col-reorder { width:15%; }
   .line-table .col-qty { width:18%; }
   .line-table .col-del { width:5%; text-align:center; }
   .del-btn { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1.1rem; padding:0.25rem 0.4rem; border-radius:3px; }
   .del-btn:hover { color:var(--danger); background:var(--danger-light); }
+  .line-item-stack { display:flex; flex-direction:column; gap:0.45rem; }
+  .field-hint { font-size:0.74rem; color:var(--muted); font-family:"Helvetica Neue",Arial,sans-serif; }
 </style>
 {% endblock %}
 {% block content %}
@@ -56,7 +58,7 @@
     <table class="line-table">
       <thead>
         <tr>
-          <th class="col-item">Item Name</th>
+          <th class="col-item">Item</th>
           <th class="col-unit">Unit</th>
           <th class="col-reorder">Reorder Level</th>
           <th class="col-qty">Qty Received</th>
@@ -78,12 +80,16 @@
 
 <script>
 const ITEMS = {{ items_json|safe }};
+const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
 let lineCount = 0;
 
-function itemSuggestions(val) {
-  if (!val) return [];
-  const lower = val.toLowerCase();
-  return ITEMS.filter(i => i.name.toLowerCase().includes(lower)).slice(0, 8);
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function addLine(name='', unit='', reorder=0, qty='') {
@@ -93,17 +99,23 @@ function addLine(name='', unit='', reorder=0, qty='') {
   tr.id = `line_${idx}`;
   tr.innerHTML = `
     <td class="col-item">
-      <input type="text" name="line_item_${idx}" value="${name}" placeholder="Item name" autocomplete="off" oninput="handleItemInput(this, ${idx})" required>
-      <div id="suggest_${idx}" style="position:relative"></div>
+      <div class="line-item-stack">
+        <select name="line_item_${idx}" id="item_select_${idx}" onchange="selectExistingItem(${idx}, this.value)">
+          <option value="">Select existing item</option>
+          ${ITEM_OPTIONS}
+        </select>
+        <input type="text" name="line_new_item_${idx}" id="new_item_${idx}" value="${escapeHtml(name)}" placeholder="Or enter a new item name" oninput="handleNewItemInput(${idx})">
+        <div class="field-hint">Choose from the dropdown for stocked items, or type a new item name if it is not in the list.</div>
+      </div>
     </td>
     <td class="col-unit">
-      <input type="text" name="line_unit_${idx}" id="unit_${idx}" value="${unit}" placeholder="e.g. packs">
+      <input type="text" name="line_unit_${idx}" id="unit_${idx}" value="${escapeHtml(unit)}" placeholder="e.g. packs">
     </td>
     <td class="col-reorder">
       <input type="number" name="line_reorder_${idx}" id="reorder_${idx}" value="${reorder}" min="0" step="0.01">
     </td>
     <td class="col-qty">
-      <input type="number" name="line_qty_${idx}" value="${qty}" min="0.01" step="0.01" placeholder="0.00" required>
+      <input type="number" name="line_qty_${idx}" value="${qty}" min="0.01" step="0.01" placeholder="0.00">
     </td>
     <td class="col-del">
       <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">x</button>
@@ -117,26 +129,28 @@ function removeLine(idx) {
   if (el) el.remove();
 }
 
-function handleItemInput(input, idx) {
-  const val = input.value;
-  const box = document.getElementById(`suggest_${idx}`);
-  const matches = itemSuggestions(val);
-  if (!matches.length) { box.innerHTML = ''; return; }
-  box.innerHTML = `<div style="position:absolute;top:0;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:4px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.1)">
-    ${matches.map(m => `<div onclick="selectItem(${idx},'${m.name.replace(/'/g,"\\'")}','${m.unit}',${m.reorder_level})" style="padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;font-family:'Helvetica Neue',Arial,sans-serif;" onmouseover="this.style.background='#f0f0ec'" onmouseout="this.style.background=''">${m.name} <span style="color:var(--muted);font-size:0.75rem">${m.unit}</span></div>`).join('')}
-  </div>`;
+function selectExistingItem(idx, itemId) {
+  const newItemInput = document.getElementById(`new_item_${idx}`);
+  if (!itemId) {
+    return;
+  }
+
+  const item = ITEMS.find(entry => String(entry.id) === String(itemId));
+  if (!item) {
+    return;
+  }
+
+  newItemInput.value = '';
+  document.getElementById(`unit_${idx}`).value = item.unit;
+  document.getElementById(`reorder_${idx}`).value = item.reorder_level;
 }
 
-function selectItem(idx, name, unit, reorder) {
-  document.querySelector(`[name=line_item_${idx}]`).value = name;
-  document.getElementById(`unit_${idx}`).value = unit;
-  document.getElementById(`reorder_${idx}`).value = reorder;
-  document.getElementById(`suggest_${idx}`).innerHTML = '';
+function handleNewItemInput(idx) {
+  const newItemInput = document.getElementById(`new_item_${idx}`);
+  if (newItemInput.value.trim()) {
+    document.getElementById(`item_select_${idx}`).value = '';
+  }
 }
-
-document.addEventListener('click', () => {
-  document.querySelectorAll('[id^=suggest_]').forEach(el => el.innerHTML = '');
-});
 
 addLine(); addLine(); addLine();
 </script>

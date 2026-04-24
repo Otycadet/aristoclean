@@ -160,6 +160,52 @@ class InventoryTestCase(TestCase):
         self.item.refresh_from_db()
         self.assertEqual(self.item.current_stock, Decimal("16.50"))
 
+    def test_stock_receive_can_use_existing_item_dropdown(self):
+        request = self.factory.post("/stock/receive/", data={
+            "supplier": "Local Supplier",
+            "reference": "PO-100",
+            "notes": "",
+            "received_at": "2026-04-22",
+            "line_item_0": str(self.item.pk),
+            "line_new_item_0": "",
+            "line_unit_0": "pcs",
+            "line_reorder_0": "12.00",
+            "line_qty_0": "5.00",
+        })
+        request.user = self.storekeeper
+        self._attach_session_and_messages(request)
+
+        response = stock_receive(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.item.refresh_from_db()
+        self.assertEqual(Item.objects.count(), 1)
+        self.assertEqual(self.item.reorder_level, Decimal("12.00"))
+        self.assertEqual(self.item.current_stock, Decimal("25.00"))
+
+    def test_stock_receive_can_create_new_item_from_typed_name(self):
+        request = self.factory.post("/stock/receive/", data={
+            "supplier": "Fresh Supplier",
+            "reference": "PO-101",
+            "notes": "",
+            "received_at": "2026-04-22",
+            "line_item_0": "",
+            "line_new_item_0": "Detergent",
+            "line_unit_0": "bottles",
+            "line_reorder_0": "8.00",
+            "line_qty_0": "4.00",
+        })
+        request.user = self.storekeeper
+        self._attach_session_and_messages(request)
+
+        response = stock_receive(request)
+
+        self.assertEqual(response.status_code, 302)
+        new_item = Item.objects.get(name="Detergent")
+        self.assertEqual(new_item.unit, "bottles")
+        self.assertEqual(new_item.reorder_level, Decimal("8.00"))
+        self.assertEqual(new_item.current_stock, Decimal("4.00"))
+
     def test_superuser_can_open_manage_pages(self):
         request = self.factory.get("/manage/items/")
         request.user = self.superuser

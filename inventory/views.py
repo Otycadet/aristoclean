@@ -323,7 +323,9 @@ def _parse_reorder_lines(post_data):
             raise ValueError("Enter quantity for each reorder line you add.")
 
         try:
-            item = Item.objects.get(pk=int(item_id), active=True)
+            item = _annotate_item_stock(             # ← annotate so current_stock_db exists
+                Item.objects.filter(pk=int(item_id), active=True)
+            ).get()
         except (Item.DoesNotExist, ValueError):
             raise ValueError("Select a valid active item from the dropdown.")
 
@@ -335,7 +337,7 @@ def _parse_reorder_lines(post_data):
         lines.append({
             "item": item,
             "quantity": quantity,
-            "stock": item.current_stock,
+            "stock": item.current_stock_db,          # ← use the annotated field
         })
 
     return lines if lines else None

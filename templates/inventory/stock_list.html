@@ -5,11 +5,11 @@
   <h1>Stock Levels</h1>
   <div class="toolbar">
     <a href="{% url 'low_stock_report' %}" class="btn btn-secondary btn-sm">Reorder Report</a>
-    {% if user.profile.is_manager %}
+    {% if user.is_superuser or user.profile.is_manager %}
     <a href="{% url 'stock_adjustment_create' %}" class="btn btn-secondary btn-sm">Adjust Stock</a>
     <a href="{% url 'export_stock_csv' %}" class="btn btn-secondary btn-sm">Export CSV</a>
     {% endif %}
-    {% if user.profile.can_operate_stock %}
+    {% if user.is_superuser or user.profile.can_operate_stock %}
     <a href="{% url 'stock_receive' %}" class="btn btn-primary btn-sm">Receive Delivery</a>
     {% endif %}
   </div>

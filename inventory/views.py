@@ -611,42 +611,57 @@ def stock_adjustment_create(request):
 @manager_required
 def manage_items(request):
     items = Item.objects.all().order_by("name")
-    form = ItemForm(request.POST or None)
+    editing_item = None
+    edit_item_id = request.GET.get("edit")
+    if edit_item_id:
+        editing_item = get_object_or_404(Item, pk=edit_item_id)
+
+    if request.method == "POST":
+        item_id = request.POST.get("item_id")
+        if item_id:
+            editing_item = get_object_or_404(Item, pk=item_id)
+        form = ItemForm(request.POST, instance=editing_item)
+    else:
+        form = ItemForm(instance=editing_item)
+
     if request.method == "POST" and form.is_valid():
-        name = form.cleaned_data["name"].strip()
-        try:
-            item = Item.objects.get(name__iexact=name)
-            item.unit = form.cleaned_data["unit"]
-            item.reorder_level = form.cleaned_data["reorder_level"]
-            item.active = form.cleaned_data["active"]
-            item.save()
-            messages.success(request, f"Updated {item.name}.")
-        except Item.DoesNotExist:
-            form.save()
-            messages.success(request, f"Added {name}.")
+        item = form.save()
+        action = "Updated" if item_id else "Added"
+        messages.success(request, f"{action} {item.name}.")
         return redirect("manage_items")
-    return render(request, "inventory/manage_items.html", {"items": items, "form": form})
+    return render(request, "inventory/manage_items.html", {
+        "items": items,
+        "form": form,
+        "editing_item": editing_item,
+    })
 
 
 @login_required
 @manager_required
 def manage_locations(request):
     locations = Location.objects.all().order_by("name")
-    form = LocationForm(request.POST or None)
+    editing_location = None
+    edit_location_id = request.GET.get("edit")
+    if edit_location_id:
+        editing_location = get_object_or_404(Location, pk=edit_location_id)
+
+    if request.method == "POST":
+        location_id = request.POST.get("location_id")
+        if location_id:
+            editing_location = get_object_or_404(Location, pk=location_id)
+        form = LocationForm(request.POST, instance=editing_location)
+    else:
+        form = LocationForm(instance=editing_location)
+
     if request.method == "POST" and form.is_valid():
-        name = form.cleaned_data["name"].strip()
-        try:
-            location = Location.objects.get(name__iexact=name)
-            location.active = form.cleaned_data["active"]
-            location.save()
-            messages.success(request, f"Updated {location.name}.")
-        except Location.DoesNotExist:
-            form.save()
-            messages.success(request, f"Added {name}.")
+        location = form.save()
+        action = "Updated" if location_id else "Added"
+        messages.success(request, f"{action} {location.name}.")
         return redirect("manage_locations")
     return render(request, "inventory/manage_locations.html", {
         "locations": locations,
         "form": form,
+        "editing_location": editing_location,
     })
 
 

@@ -180,12 +180,12 @@ class UserProfile(models.Model):
 
     @property
     def is_manager(self):
-        return self.role == self.ROLE_MANAGER
+        return self.user.is_superuser or self.role == self.ROLE_MANAGER
 
     @property
     def can_operate_stock(self):
-        return self.role in {self.ROLE_STOREKEEPER, self.ROLE_MANAGER}
+        return self.user.is_superuser or self.role in {self.ROLE_STOREKEEPER, self.ROLE_MANAGER}
 
     @property
     def can_view_reports(self):
-        return self.role == self.ROLE_MANAGER
+        return self.user.is_superuser or self.role == self.ROLE_MANAGER

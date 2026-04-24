@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
   <h1>Dashboard</h1>
-  {% if user.profile.can_operate_stock %}
+  {% if user.is_superuser or user.profile.can_operate_stock %}
   <div class="toolbar">
     <a href="{% url 'stock_receive' %}" class="btn btn-secondary btn-sm">Receive Stock</a>
     <a href="{% url 'issue_stock' %}" class="btn btn-primary btn-sm">Issue Stock</a>

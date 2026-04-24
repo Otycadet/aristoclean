@@ -18,6 +18,8 @@ def roles_required(*allowed_roles):
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect("login")
+            if request.user.is_superuser:
+                return view_func(request, *args, **kwargs)
             profile = get_user_profile(request.user)
             if profile is None or profile.role not in allowed_roles:
                 raise PermissionDenied
@@ -40,6 +42,8 @@ class ManagerRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
+        if request.user.is_superuser:
+            return super().dispatch(request, *args, **kwargs)
         profile = get_user_profile(request.user)
         if profile is None or not profile.is_manager:
             raise PermissionDenied

@@ -8,7 +8,17 @@ from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase
 
 from .models import DistributionLine, IssueBatch, Item, Location, StockAdjustment, StockEntry, UserProfile
-from .views import issue_stock, manage_users, receipt_detail, reports, stock_adjustment_create, stock_receive, void_receipt
+from .views import (
+    issue_stock,
+    manage_items,
+    manage_locations,
+    manage_users,
+    receipt_detail,
+    reports,
+    stock_adjustment_create,
+    stock_receive,
+    void_receipt,
+)
 
 
 class InventoryTestCase(TestCase):
@@ -17,6 +27,7 @@ class InventoryTestCase(TestCase):
         self.viewer = self._create_user("viewer", UserProfile.ROLE_VIEWER)
         self.storekeeper = self._create_user("storekeeper", UserProfile.ROLE_STOREKEEPER)
         self.manager = self._create_user("manager", UserProfile.ROLE_MANAGER)
+        self.superuser = User.objects.create_superuser("admin", "admin@example.com", "pass1234")
 
         self.location = Location.objects.create(name="Main Store")
         self.item = Item.objects.create(name="Soap", unit="pcs", reorder_level=Decimal("10.00"))
@@ -148,3 +159,48 @@ class InventoryTestCase(TestCase):
         )
         self.item.refresh_from_db()
         self.assertEqual(self.item.current_stock, Decimal("16.50"))
+
+    def test_superuser_can_open_manage_pages(self):
+        request = self.factory.get("/manage/items/")
+        request.user = self.superuser
+        response = manage_items(request)
+        self.assertEqual(response.status_code, 200)
+
+        request = self.factory.get("/manage/locations/")
+        request.user = self.superuser
+        response = manage_locations(request)
+        self.assertEqual(response.status_code, 200)
+
+    def test_superuser_can_edit_item_and_reorder_level(self):
+        request = self.factory.post("/manage/items/", data={
+            "item_id": str(self.item.pk),
+            "name": "Liquid Soap",
+            "unit": "bottles",
+            "reorder_level": "15.00",
+            "active": "on",
+        })
+        request.user = self.superuser
+        self._attach_session_and_messages(request)
+
+        response = manage_items(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.name, "Liquid Soap")
+        self.assertEqual(self.item.unit, "bottles")
+        self.assertEqual(self.item.reorder_level, Decimal("15.00"))
+
+    def test_superuser_can_edit_location(self):
+        request = self.factory.post("/manage/locations/", data={
+            "location_id": str(self.location.pk),
+            "name": "Head Office Store",
+            "active": "on",
+        })
+        request.user = self.superuser
+        self._attach_session_and_messages(request)
+
+        response = manage_locations(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.name, "Head Office Store")

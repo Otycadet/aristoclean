@@ -11,9 +11,12 @@
 
 <div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;align-items:start;">
   <div class="card">
-    <div class="card-title">Add / Update Item</div>
+    <div class="card-title">{% if editing_item %}Edit Item{% else %}Add Item{% endif %}</div>
     <form method="post">
       {% csrf_token %}
+      {% if editing_item %}
+      <input type="hidden" name="item_id" value="{{ editing_item.pk }}">
+      {% endif %}
       {% for field in form %}
       <div class="form-group">
         <label>{{ field.label }}</label>
@@ -21,7 +24,12 @@
         {% if field.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ field.errors.0 }}</div>{% endif %}
       </div>
       {% endfor %}
-      <button type="submit" class="btn btn-primary" style="width:100%">Save Item</button>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary" style="flex:1 1 180px">{% if editing_item %}Update Item{% else %}Save Item{% endif %}</button>
+        {% if editing_item %}
+        <a href="{% url 'manage_items' %}" class="btn btn-secondary" style="flex:1 1 180px;text-align:center">Cancel</a>
+        {% endif %}
+      </div>
     </form>
   </div>
 
@@ -35,6 +43,7 @@
             <th>Unit</th>
             <th style="text-align:right">Reorder Level</th>
             <th>Active</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -44,9 +53,10 @@
             <td>{{ item.unit }}</td>
             <td style="text-align:right">{{ item.reorder_level|floatformat:0 }}</td>
             <td>{% if item.active %}<span class="badge badge-ok">Yes</span>{% else %}<span class="badge badge-danger">No</span>{% endif %}</td>
+            <td style="text-align:right"><a href="{% url 'manage_items' %}?edit={{ item.pk }}" class="btn btn-secondary btn-sm">Edit</a></td>
           </tr>
           {% empty %}
-          <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:2rem">No items yet.</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">No items yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>

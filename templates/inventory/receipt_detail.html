@@ -73,7 +73,7 @@
   </table>
 </div>
 
-{% if user.profile.is_manager and not batch.is_voided %}
+{% if not batch.is_voided and user.is_superuser or not batch.is_voided and user.profile.is_manager %}
 <div class="card no-print">
   <div class="card-title">Correction</div>
   <form method="post" action="{% url 'void_receipt' batch.receipt_number %}">

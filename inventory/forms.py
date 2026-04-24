@@ -49,12 +49,30 @@ class IssueLineForm(forms.Form):
 
 
 class ItemForm(forms.ModelForm):
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        queryset = Item.objects.filter(name__iexact=name)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise forms.ValidationError("An item with this name already exists.")
+        return name
+
     class Meta:
         model = Item
         fields = ["name", "unit", "reorder_level", "active"]
 
 
 class LocationForm(forms.ModelForm):
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        queryset = Location.objects.filter(name__iexact=name)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise forms.ValidationError("A location with this name already exists.")
+        return name
+
     class Meta:
         model = Location
         fields = ["name", "active"]

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
   <h1>Issue Receipts</h1>
-  {% if user.profile.can_operate_stock %}
+  {% if user.is_superuser or user.profile.can_operate_stock %}
   <a href="{% url 'issue_stock' %}" class="btn btn-primary btn-sm">New Issue</a>
   {% endif %}
 </div>

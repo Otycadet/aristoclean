@@ -71,6 +71,15 @@
         color: var(--muted);
         margin-top: 0.25rem;
     }
+
+    .summary-table td,
+    .summary-table th {
+        padding-right: 0.75rem;
+    }
+
+    .text-right {
+        text-align: right;
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -113,9 +122,37 @@
     </div>
 </form>
 
+{% if reorder_lines %}
+<div class="card" style="margin-top:1rem;">
+    <div class="card-title">Prepared Reorder Summary</div>
+    <div class="table-wrap">
+        <table class="line-table summary-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Unit</th>
+                    <th class="text-right">Stock On Hand</th>
+                    <th class="text-right">Qty to Order</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in reorder_lines %}
+                <tr>
+                    <td>{{ line.item.name }}</td>
+                    <td>{{ line.item.unit }}</td>
+                    <td class="text-right">{{ line.stock|floatformat:2 }}</td>
+                    <td class="text-right">{{ line.quantity|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
 <script>
-    const ITEMS = {{ items_json| safe }};
-    const PRESET_LINES = {{ reorder_lines_json|default: '[]' | safe }};
+    const ITEMS = {{ items_json|safe }};
+    const PRESET_LINES = {{ reorder_lines_json|default:'[]'|safe }};
     const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
     let lineCount = 0;
 
@@ -150,7 +187,7 @@
       <input type="number" name="line_qty_${idx}" id="qty_${idx}" value="${escapeHtml(qty)}" min="0.01" step="0.01" placeholder="0.00">
     </td>
     <td class="col-del">
-      <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">×</button>
+      <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">&times;</button>
     </td>
   `;
         tbody.appendChild(tr);

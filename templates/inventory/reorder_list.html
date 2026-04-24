@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Reorder Items - Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+    .line-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .line-table th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-weight: 600;
+        padding: 0.5rem 0.5rem 0.5rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .line-table td {
+        padding: 0.4rem 0.4rem 0.4rem 0;
+        vertical-align: top;
+    }
+
+    .line-table input,
+    .line-table select {
+        margin-bottom: 0;
+        width: 100%;
+    }
+
+    .line-table .col-item {
+        width: 38%;
+    }
+
+    .line-table .col-unit {
+        width: 16%;
+    }
+
+    .line-table .col-stock {
+        width: 16%;
+        text-align: right;
+    }
+
+    .line-table .col-qty {
+        width: 18%;
+    }
+
+    .line-table .col-del {
+        width: 8%;
+        text-align: center;
+    }
+
+    .del-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 1.1rem;
+        padding: 0.25rem 0.4rem;
+        border-radius: 3px;
+    }
+
+    .del-btn:hover {
+        color: var(--danger);
+        background: var(--danger-light);
+    }
+
+    .field-hint {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Reorder Items</h1>
+    <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">Back to Stock</a>
+</div>
+
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+<form method="post" id="reorderForm">
+    {% csrf_token %}
+
+    <div class="card">
+        <div class="card-title">Reorder Lines</div>
+        <div class="table-wrap">
+            <table class="line-table">
+                <thead>
+                    <tr>
+                        <th class="col-item">Item</th>
+                        <th class="col-unit">Unit</th>
+                        <th class="col-stock">Stock On Hand</th>
+                        <th class="col-qty">Qty to Order</th>
+                        <th class="col-del"></th>
+                    </tr>
+                </thead>
+                <tbody id="lineBody"></tbody>
+            </table>
+        </div>
+        <div style="margin-top:1rem; display:flex; gap:0.75rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">Add Item</button>
+            <span class="field-hint">Use the dropdown to pick an item and enter the reorder quantity. Current stock will
+                update automatically.</span>
+        </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:1rem; margin-top:1rem;">
+        <a href="{% url 'stock_list' %}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Prepare Reorder List</button>
+    </div>
+</form>
+
+<script>
+    const ITEMS = {{ items_json| safe }};
+    const PRESET_LINES = {{ reorder_lines_json|default: '[]' | safe }};
+    const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
+    let lineCount = 0;
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function addLine(itemId = '', qty = '') {
+        const idx = lineCount++;
+        const tbody = document.getElementById('lineBody');
+        const tr = document.createElement('tr');
+        tr.id = `line_${idx}`;
+        tr.innerHTML = `
+    <td class="col-item">
+      <select name="line_item_${idx}" id="item_select_${idx}" onchange="selectItem(${idx})">
+        <option value="">Select item</option>
+        ${ITEM_OPTIONS}
+      </select>
+    </td>
+    <td class="col-unit">
+      <input type="text" name="line_unit_${idx}" id="unit_${idx}" readonly placeholder="Unit">
+    </td>
+    <td class="col-stock">
+      <span id="stock_${idx}">0.00</span>
+    </td>
+    <td class="col-qty">
+      <input type="number" name="line_qty_${idx}" id="qty_${idx}" value="${escapeHtml(qty)}" min="0.01" step="0.01" placeholder="0.00">
+    </td>
+    <td class="col-del">
+      <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">×</button>
+    </td>
+  `;
+        tbody.appendChild(tr);
+
+        if (itemId) {
+            document.getElementById(`item_select_${idx}`).value = itemId;
+            selectItem(idx);
+        }
+    }
+
+    function removeLine(idx) {
+        const el = document.getElementById(`line_${idx}`);
+        if (el) el.remove();
+    }
+
+    function selectItem(idx) {
+        const select = document.getElementById(`item_select_${idx}`);
+        const itemId = select.value;
+        const unitField = document.getElementById(`unit_${idx}`);
+        const stockValue = document.getElementById(`stock_${idx}`);
+        if (!itemId) {
+            unitField.value = '';
+            stockValue.textContent = '0.00';
+            return;
+        }
+
+        const item = ITEMS.find(entry => String(entry.id) === String(itemId));
+        if (!item) {
+            unitField.value = '';
+            stockValue.textContent = '0.00';
+            return;
+        }
+
+        unitField.value = item.unit;
+        stockValue.textContent = Number(item.stock).toFixed(2);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if (PRESET_LINES.length) {
+            PRESET_LINES.forEach(line => addLine(line.item_id, line.quantity));
+        } else {
+            addLine();
+            addLine();
+        }
+    });
+</script>
+{% endblock %}

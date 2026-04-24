@@ -4,6 +4,7 @@
 <div class="page-header">
   <h1>Stock Levels</h1>
   <div class="toolbar">
+    <a href="{% url 'stock_reorder' %}" class="btn btn-secondary btn-sm">Reorder</a>
     <a href="{% url 'low_stock_report' %}" class="btn btn-secondary btn-sm">Reorder Report</a>
     {% if user.is_superuser or user.profile.is_manager %}
     <a href="{% url 'stock_adjustment_create' %}" class="btn btn-secondary btn-sm">Adjust Stock</a>
@@ -39,7 +40,8 @@
           <td style="text-align:right;color:var(--muted)">{{ row.total_received|floatformat:2 }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.total_issued|floatformat:2 }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.total_adjustments|floatformat:2 }}</td>
-          <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">{{ row.current_stock|floatformat:2 }}</td>
+          <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">{{
+            row.current_stock|floatformat:2 }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.item.reorder_level|floatformat:2 }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.reorder_shortfall|floatformat:2 }}</td>
           <td>
@@ -48,7 +50,9 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--muted)">No items yet.</td></tr>
+        <tr>
+          <td colspan="9" style="text-align:center;padding:2.5rem;color:var(--muted)">No items yet.</td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

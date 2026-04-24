@@ -45,7 +45,8 @@ def _annotate_item_stock(queryset=None):
         .values("total")[:1]
     )
     issued_subquery = (
-        DistributionLine.objects.filter(item=OuterRef("pk"), batch__is_voided=False)
+        DistributionLine.objects.filter(
+            item=OuterRef("pk"), batch__is_voided=False)
         .values("item")
         .annotate(total=Coalesce(Sum("quantity"), ZERO_DECIMAL))
         .values("total")[:1]
@@ -57,12 +58,16 @@ def _annotate_item_stock(queryset=None):
         .values("total")[:1]
     )
     queryset = queryset.annotate(
-        total_received_db=Coalesce(Subquery(received_subquery, output_field=DECIMAL_OUTPUT), ZERO_DECIMAL),
-        total_issued_db=Coalesce(Subquery(issued_subquery, output_field=DECIMAL_OUTPUT), ZERO_DECIMAL),
-        total_adjustments_db=Coalesce(Subquery(adjustment_subquery, output_field=DECIMAL_OUTPUT), ZERO_DECIMAL),
+        total_received_db=Coalesce(
+            Subquery(received_subquery, output_field=DECIMAL_OUTPUT), ZERO_DECIMAL),
+        total_issued_db=Coalesce(
+            Subquery(issued_subquery, output_field=DECIMAL_OUTPUT), ZERO_DECIMAL),
+        total_adjustments_db=Coalesce(
+            Subquery(adjustment_subquery, output_field=DECIMAL_OUTPUT), ZERO_DECIMAL),
     ).annotate(
         current_stock_db=ExpressionWrapper(
-            F("total_received_db") - F("total_issued_db") + F("total_adjustments_db"),
+            F("total_received_db") - F("total_issued_db") +
+            F("total_adjustments_db"),
             output_field=DECIMAL_OUTPUT,
         )
     )
@@ -96,7 +101,8 @@ def _display_name_for_user(user):
 
 @login_required
 def dashboard(request):
-    items = _annotate_item_stock(Item.objects.filter(active=True)).order_by("name")
+    items = _annotate_item_stock(
+        Item.objects.filter(active=True)).order_by("name")
     stock_data = []
     for item in items:
         stock_data.append({
@@ -130,7 +136,8 @@ def dashboard(request):
 
 @login_required
 def stock_list(request):
-    items = _annotate_item_stock(Item.objects.filter(active=True)).order_by("name")
+    items = _annotate_item_stock(
+        Item.objects.filter(active=True)).order_by("name")
     stock_data = []
     for item in items:
         stock_data.append({
@@ -143,6 +150,35 @@ def stock_list(request):
             "reorder_shortfall": max(item.reorder_level - item.current_stock_db, Decimal("0.00")),
         })
     return render(request, "inventory/stock_list.html", {"stock_data": stock_data})
+
+
+@login_required
+def reorder_list(request):
+    items_qs = _annotate_item_stock(
+        Item.objects.filter(active=True)).order_by("name")
+    reorder_lines = []
+    error = None
+
+    if request.method == "POST":
+        try:
+            reorder_lines = _parse_reorder_lines(request.POST)
+            if reorder_lines is None:
+                raise ValueError("Add at least one item line.")
+            messages.success(
+                request, f"Prepared reorder list for {len(reorder_lines)} item(s).")
+        except ValueError as exc:
+            error = str(exc)
+
+    return render(request, "inventory/reorder_list.html", {
+        "items_json": _serialize_items_for_js(items_qs),
+        "reorder_lines": reorder_lines,
+        "reorder_lines_json": json.dumps([
+            {"item_id": str(line["item"].pk),
+             "quantity": float(line["quantity"])}
+            for line in reorder_lines
+        ]),
+        "error": error,
+    })
 
 
 @login_required
@@ -167,9 +203,11 @@ def stock_receive(request):
                         reorder = line["reorder_level"]
                         qty = line["quantity"]
                         if not name:
-                            raise ValueError("Each line must have an item name.")
+                            raise ValueError(
+                                "Each line must have an item name.")
                         if qty <= 0:
-                            raise ValueError(f"Quantity must be greater than 0 for {name}.")
+                            raise ValueError(
+                                f"Quantity must be greater than 0 for {name}.")
                         item = _get_or_create_item(name, unit, reorder)
                         StockEntry.objects.create(
                             item=item,
@@ -180,14 +218,16 @@ def stock_receive(request):
                             received_at=hd["received_at"],
                             created_by=request.user,
                         )
-                messages.success(request, f"Delivery of {len(lines)} item(s) recorded.")
+                messages.success(
+                    request, f"Delivery of {len(lines)} item(s) recorded.")
                 return redirect("stock_list")
             except ValueError as exc:
                 error = str(exc)
         elif lines is None:
             error = "Add at least one item line."
 
-    items_qs = _annotate_item_stock(Item.objects.filter(active=True)).order_by("name")
+    items_qs = _annotate_item_stock(
+        Item.objects.filter(active=True)).order_by("name")
     return render(request, "inventory/stock_receive.html", {
         "header_form": header_form,
         "items_json": _serialize_items_for_js(items_qs),
@@ -237,22 +277,65 @@ def _parse_delivery_lines(post_data):
             try:
                 item = Item.objects.get(pk=int(existing_item_id), active=True)
             except (Item.DoesNotExist, ValueError):
-                raise ValueError("Select a valid active item from the dropdown.")
+                raise ValueError(
+                    "Select a valid active item from the dropdown.")
             item_name = item.name
             unit = unit or item.unit
-            reorder_value = _decimal_from_post(reorder, f"reorder level for {item_name}")
+            reorder_value = _decimal_from_post(
+                reorder, f"reorder level for {item_name}")
         else:
             if not new_name:
-                raise ValueError("Each delivery line must select an existing item or enter a new item name.")
+                raise ValueError(
+                    "Each delivery line must select an existing item or enter a new item name.")
             item_name = new_name
             unit = unit or "units"
-            reorder_value = _decimal_from_post(reorder, f"reorder level for {item_name}")
+            reorder_value = _decimal_from_post(
+                reorder, f"reorder level for {item_name}")
 
         lines.append({
             "item_name": item_name,
             "unit": unit,
             "reorder_level": reorder_value,
             "quantity": _decimal_from_post(qty, f"quantity for {item_name}"),
+        })
+
+    return lines if lines else None
+
+
+def _parse_reorder_lines(post_data):
+    lines = []
+    line_indices = sorted({
+        int(match.group(1))
+        for key in post_data.keys()
+        for match in [re.match(r"^line_(?:item|qty)_(\d+)$", key)]
+        if match
+    })
+
+    for index in line_indices:
+        item_id = post_data.get(f"line_item_{index}", "").strip()
+        qty = post_data.get(f"line_qty_{index}", "").strip()
+
+        if not any([item_id, qty]):
+            continue
+        if not item_id:
+            raise ValueError("Select a valid item for each reorder line.")
+        if not qty:
+            raise ValueError("Enter quantity for each reorder line you add.")
+
+        try:
+            item = Item.objects.get(pk=int(item_id), active=True)
+        except (Item.DoesNotExist, ValueError):
+            raise ValueError("Select a valid active item from the dropdown.")
+
+        quantity = _decimal_from_post(qty, f"quantity for {item.name}")
+        if quantity <= 0:
+            raise ValueError(
+                f"Quantity must be greater than 0 for {item.name}.")
+
+        lines.append({
+            "item": item,
+            "quantity": quantity,
+            "stock": item.current_stock,
         })
 
     return lines if lines else None
@@ -278,14 +361,16 @@ def issue_stock(request):
             hd["issued_by"] = issued_by_name
             try:
                 batch = _create_issue_batch(hd, lines, request.user)
-                messages.success(request, f"Receipt {batch.receipt_number} created.")
+                messages.success(
+                    request, f"Receipt {batch.receipt_number} created.")
                 return redirect("receipt_detail", receipt_number=batch.receipt_number)
             except ValueError as exc:
                 error = str(exc)
         elif lines is None:
             error = "Add at least one item line to the receipt."
 
-    items_qs = _annotate_item_stock(Item.objects.filter(active=True)).order_by("name")
+    items_qs = _annotate_item_stock(
+        Item.objects.filter(active=True)).order_by("name")
     return render(request, "inventory/issue_stock.html", {
         "header_form": header_form,
         "items_json": _serialize_items_for_js(items_qs),
@@ -304,8 +389,10 @@ def _parse_issue_lines(post_data):
             try:
                 item = Item.objects.get(pk=int(item_id), active=True)
             except (Item.DoesNotExist, ValueError):
-                raise ValueError("Select valid items from the list of active stock items.")
-            lines.append({"item": item, "quantity": _decimal_from_post(qty, f"quantity for {item.name}")})
+                raise ValueError(
+                    "Select valid items from the list of active stock items.")
+            lines.append({"item": item, "quantity": _decimal_from_post(
+                qty, f"quantity for {item.name}")})
         index += 1
     return lines if lines else None
 
@@ -319,7 +406,8 @@ def _create_issue_batch(hd: dict, lines: list, user) -> IssueBatch:
     grouped = {}
     for line in lines:
         item = line["item"]
-        grouped[item.pk] = grouped.get(item.pk, Decimal("0.00")) + line["quantity"]
+        grouped[item.pk] = grouped.get(
+            item.pk, Decimal("0.00")) + line["quantity"]
 
     annotated_items = {
         item.pk: item
@@ -330,9 +418,11 @@ def _create_issue_batch(hd: dict, lines: list, user) -> IssueBatch:
     for item_id, qty in grouped.items():
         item = annotated_items[item_id]
         if qty <= 0:
-            raise ValueError(f"Quantity must be greater than 0 for {item.name}.")
+            raise ValueError(
+                f"Quantity must be greater than 0 for {item.name}.")
         if qty > item.current_stock_db:
-            raise ValueError(f"Only {item.current_stock_db:,.2f} {item.unit} of {item.name} available.")
+            raise ValueError(
+                f"Only {item.current_stock_db:,.2f} {item.unit} of {item.name} available.")
         validated.append((item, qty))
 
     batch = IssueBatch.objects.create(
@@ -351,7 +441,8 @@ def _create_issue_batch(hd: dict, lines: list, user) -> IssueBatch:
 @login_required
 def receipts_list(request):
     form = ReceiptFilterForm(request.GET or None)
-    batches = IssueBatch.objects.select_related("location", "voided_by").prefetch_related("lines__item")
+    batches = IssueBatch.objects.select_related(
+        "location", "voided_by").prefetch_related("lines__item")
 
     if form.is_valid():
         q = form.cleaned_data.get("q")
@@ -391,7 +482,8 @@ def receipts_list(request):
 @login_required
 def receipt_detail(request, receipt_number):
     batch = get_object_or_404(
-        IssueBatch.objects.select_related("location", "created_by", "voided_by").prefetch_related("lines__item"),
+        IssueBatch.objects.select_related(
+            "location", "created_by", "voided_by").prefetch_related("lines__item"),
         receipt_number=receipt_number,
     )
     void_form = ReceiptVoidForm()
@@ -418,7 +510,8 @@ def void_receipt(request, receipt_number):
     if request.method != "POST":
         return redirect("receipt_detail", receipt_number=receipt_number)
     if batch.is_voided:
-        messages.warning(request, f"Receipt {batch.receipt_number} is already voided.")
+        messages.warning(
+            request, f"Receipt {batch.receipt_number} is already voided.")
         return redirect("receipt_detail", receipt_number=receipt_number)
 
     form = ReceiptVoidForm(request.POST)
@@ -430,8 +523,10 @@ def void_receipt(request, receipt_number):
     batch.void_reason = form.cleaned_data["reason"]
     batch.voided_at = timezone.now()
     batch.voided_by = request.user
-    batch.save(update_fields=["is_voided", "void_reason", "voided_at", "voided_by"])
-    messages.success(request, f"Receipt {batch.receipt_number} has been voided and stock has been restored.")
+    batch.save(update_fields=["is_voided",
+               "void_reason", "voided_at", "voided_by"])
+    messages.success(
+        request, f"Receipt {batch.receipt_number} has been voided and stock has been restored.")
     return redirect("receipt_detail", receipt_number=receipt_number)
 
 
@@ -512,7 +607,8 @@ def export_csv(request):
     ])
     for item in _annotate_item_stock(Item.objects.filter(active=True)).order_by("name"):
         status = "LOW STOCK" if item.current_stock_db <= item.reorder_level else "OK"
-        shortfall = max(item.reorder_level - item.current_stock_db, Decimal("0.00"))
+        shortfall = max(item.reorder_level -
+                        item.current_stock_db, Decimal("0.00"))
         writer.writerow([
             item.name,
             item.unit,
@@ -560,7 +656,8 @@ def export_report_csv(request):
         f'attachment; filename="report_{year:04d}_{month:02d}.csv"'
     )
     writer = csv.writer(response)
-    writer.writerow(["Receipt", "Date", "Location", "Item", "Quantity", "Unit", "Issued To", "Issued By", "Notes"])
+    writer.writerow(["Receipt", "Date", "Location", "Item",
+                    "Quantity", "Unit", "Issued To", "Issued By", "Notes"])
     qs = (
         DistributionLine.objects.filter(batch__in=batch_qs)
         .select_related("batch__location", "item")
@@ -583,8 +680,10 @@ def export_report_csv(request):
 
 @login_required
 def low_stock_report(request):
-    items = _annotate_item_stock(Item.objects.filter(active=True)).order_by("name")
-    low_stock_items = [item for item in items if item.current_stock_db <= item.reorder_level]
+    items = _annotate_item_stock(
+        Item.objects.filter(active=True)).order_by("name")
+    low_stock_items = [
+        item for item in items if item.current_stock_db <= item.reorder_level]
     return render(request, "inventory/low_stock_report.html", {
         "low_stock_items": low_stock_items,
     })
@@ -597,7 +696,8 @@ def export_low_stock_csv(request):
         f'attachment; filename="low_stock_{date.today().strftime("%Y%m%d")}.csv"'
     )
     writer = csv.writer(response)
-    writer.writerow(["Item", "Unit", "Current Stock", "Reorder Level", "Shortfall"])
+    writer.writerow(["Item", "Unit", "Current Stock",
+                    "Reorder Level", "Shortfall"])
     for item in _annotate_item_stock(Item.objects.filter(active=True)).order_by("name"):
         if item.current_stock_db <= item.reorder_level:
             writer.writerow([
@@ -619,16 +719,20 @@ def stock_adjustment_create(request):
         adjustment.quantity_delta = form.cleaned_data["quantity_delta"]
         adjustment.created_by = request.user
 
-        item_with_stock = _annotate_item_stock(Item.objects.filter(pk=adjustment.item_id)).get()
+        item_with_stock = _annotate_item_stock(
+            Item.objects.filter(pk=adjustment.item_id)).get()
         projected_stock = item_with_stock.current_stock_db + adjustment.quantity_delta
         if projected_stock < Decimal("0.00"):
-            form.add_error("quantity", f"This adjustment would reduce {adjustment.item.name} below zero stock.")
+            form.add_error(
+                "quantity", f"This adjustment would reduce {adjustment.item.name} below zero stock.")
         else:
             adjustment.save()
-            messages.success(request, f"Stock adjustment recorded for {adjustment.item.name}.")
+            messages.success(
+                request, f"Stock adjustment recorded for {adjustment.item.name}.")
             return redirect("stock_list")
 
-    adjustments = StockAdjustment.objects.select_related("item", "created_by").order_by("-adjusted_at", "-id")[:20]
+    adjustments = StockAdjustment.objects.select_related(
+        "item", "created_by").order_by("-adjusted_at", "-id")[:20]
     return render(request, "inventory/stock_adjustment_form.html", {
         "form": form,
         "adjustments": adjustments,
@@ -725,16 +829,19 @@ def manage_users(request):
                 ).count()
 
                 if target_user == request.user and (new_role != UserProfile.ROLE_MANAGER or not new_active):
-                    target_form.add_error(None, "You cannot remove your own manager access or deactivate yourself.")
+                    target_form.add_error(
+                        None, "You cannot remove your own manager access or deactivate yourself.")
                 elif (
                     get_user_profile(target_user).is_manager
                     and active_manager_count == 1
                     and (new_role != UserProfile.ROLE_MANAGER or not new_active)
                 ):
-                    target_form.add_error(None, "At least one active manager must remain in the system.")
+                    target_form.add_error(
+                        None, "At least one active manager must remain in the system.")
                 else:
                     target_form.save()
-                    messages.success(request, f"Updated user {target_user.username}.")
+                    messages.success(
+                        request, f"Updated user {target_user.username}.")
                     return redirect("manage_users")
 
     user_rows = []
@@ -754,7 +861,8 @@ def manage_users(request):
 @login_required
 def item_stock_api(request, item_name):
     try:
-        item = _annotate_item_stock(Item.objects.filter(name__iexact=item_name)).get()
+        item = _annotate_item_stock(
+            Item.objects.filter(name__iexact=item_name)).get()
         return JsonResponse({"stock": float(item.current_stock_db), "unit": item.unit})
     except Item.DoesNotExist:
         return JsonResponse({"stock": None, "unit": None})

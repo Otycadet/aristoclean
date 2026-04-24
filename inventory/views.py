@@ -171,11 +171,11 @@ def reorder_list(request):
 
     return render(request, "inventory/reorder_list.html", {
         "items_json": _serialize_items_for_js(items_qs),
-        "reorder_lines": reorder_lines,
+        "reorder_lines": reorder_lines or [],
         "reorder_lines_json": json.dumps([
             {"item_id": str(line["item"].pk),
              "quantity": float(line["quantity"])}
-            for line in reorder_lines
+            for line in (reorder_lines or [])
         ]),
         "error": error,
     })

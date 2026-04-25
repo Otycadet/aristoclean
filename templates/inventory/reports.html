@@ -1,9 +1,58 @@
 {% extends "base.html" %}
 {% block title %}Reports - Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+  .page-copy {
+    margin: -0.65rem 0 1.1rem;
+    max-width: 780px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .summary-card {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, #fff 0%, #fcfbf8 100%);
+  }
+
+  .summary-kicker {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  .summary-value {
+    margin-top: 0.35rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary-note {
+    margin-top: 0.3rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>Monthly Reports</h1>
 </div>
+<p class="page-copy">Run a focused monthly report, then review both high-level totals and the full transaction trail without leaving the same screen.</p>
 
 <div class="card">
   <div class="card-title">Filter</div>
@@ -34,6 +83,28 @@
 </div>
 
 {% if ran %}
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-kicker">Receipts</div>
+      <div class="summary-value">{{ report_summary.receipt_count }}</div>
+      <div class="summary-note">Distinct issue receipts in the selected report window.</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-kicker">Transactions</div>
+      <div class="summary-value">{{ report_summary.transaction_count }}</div>
+      <div class="summary-note">Individual item issue lines matching the current filters.</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-kicker">Locations</div>
+      <div class="summary-value">{{ report_summary.location_count }}</div>
+      <div class="summary-note">How many locations appear in this report slice.</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-kicker">Total Qty</div>
+      <div class="summary-value">{{ report_summary.total_quantity|floatformat:2 }}</div>
+      <div class="summary-note">Combined quantity issued across all matching transactions.</div>
+    </div>
+  </div>
   {% if summary_rows %}
   <div class="card">
     <div class="card-title">Summary by Location and Item</div>

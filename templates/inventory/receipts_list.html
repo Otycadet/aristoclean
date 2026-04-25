@@ -1,5 +1,53 @@
 {% extends "base.html" %}
 {% block title %}Receipts - Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+  .page-copy {
+    margin: -0.65rem 0 1.1rem;
+    max-width: 760px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .summary-card {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, #fff 0%, #fcfbf8 100%);
+  }
+
+  .summary-kicker {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  .summary-value {
+    margin-top: 0.35rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary-note {
+    margin-top: 0.3rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>Issue Receipts</h1>
@@ -7,6 +55,7 @@
   <a href="{% url 'issue_stock' %}" class="btn btn-primary btn-sm">New Issue</a>
   {% endif %}
 </div>
+<p class="page-copy">Search receipts by person, location, item, or date range, then quickly spot which issues are active versus already voided.</p>
 
 <div class="card">
   <div class="card-title">Filter</div>
@@ -36,6 +85,24 @@
       <a href="{% url 'receipts_list' %}" class="btn btn-secondary">Reset</a>
     </div>
   </form>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-kicker">Matching Receipts</div>
+    <div class="summary-value">{{ receipt_summary.total }}</div>
+    <div class="summary-note">Total receipts in the current filtered view.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Active</div>
+    <div class="summary-value">{{ receipt_summary.active }}</div>
+    <div class="summary-note">Receipts that still count against stock balances.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Voided</div>
+    <div class="summary-value">{{ receipt_summary.voided }}</div>
+    <div class="summary-note">Receipts already reversed and restored to stock.</div>
+  </div>
 </div>
 
 <div class="card">

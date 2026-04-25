@@ -1,5 +1,119 @@
 {% extends "base.html" %}
 {% block title %}Stock - Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+  .page-copy {
+    margin: -0.65rem 0 1.1rem;
+    max-width: 780px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .summary-card {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, #fff 0%, #fcfbf8 100%);
+  }
+
+  .summary-kicker {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  .summary-value {
+    margin-top: 0.35rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary-note {
+    margin-top: 0.3rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .filter-row {
+    align-items: end;
+  }
+
+  .stock-table th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+  }
+
+  .item-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .item-meta {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .balance-cell {
+    min-width: 140px;
+  }
+
+  .balance-main {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .balance-meter {
+    margin-top: 0.4rem;
+    height: 8px;
+    border-radius: 999px;
+    background: #ece7df;
+    overflow: hidden;
+  }
+
+  .balance-fill {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #285a84 0%, #3f7fb2 100%);
+    border-radius: inherit;
+  }
+
+  .balance-fill.low {
+    background: linear-gradient(90deg, #b0873e 0%, #d5a24d 100%);
+  }
+
+  .status-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    align-items: flex-start;
+  }
+
+  .status-note {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.4;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>Stock Levels</h1>
@@ -15,10 +129,67 @@
     {% endif %}
   </div>
 </div>
+<p class="page-copy">This view is now easier to scan: filter by item or status, choose how the table is sorted, and spot low stock faster with clearer balance and shortfall signals.</p>
+
+<div class="card">
+  <div class="card-title">Filter and Sort</div>
+  <form method="get" class="form-row filter-row">
+    <div class="form-group" style="margin-bottom:0;">
+      <label for="stock_q">Search</label>
+      <input type="text" id="stock_q" name="q" value="{{ stock_filters.q }}" placeholder="Item name or unit">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label for="stock_status">Status</label>
+      <select id="stock_status" name="status">
+        <option value="all" {% if stock_filters.status == "all" %}selected{% endif %}>All items</option>
+        <option value="low" {% if stock_filters.status == "low" %}selected{% endif %}>Low stock only</option>
+        <option value="ok" {% if stock_filters.status == "ok" %}selected{% endif %}>Healthy stock only</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label for="stock_sort">Sort By</label>
+      <select id="stock_sort" name="sort">
+        <option value="name" {% if stock_filters.sort == "name" %}selected{% endif %}>Name</option>
+        <option value="low_first" {% if stock_filters.sort == "low_first" %}selected{% endif %}>Low stock first</option>
+        <option value="balance_desc" {% if stock_filters.sort == "balance_desc" %}selected{% endif %}>Highest balance</option>
+        <option value="balance_asc" {% if stock_filters.sort == "balance_asc" %}selected{% endif %}>Lowest balance</option>
+        <option value="shortfall_desc" {% if stock_filters.sort == "shortfall_desc" %}selected{% endif %}>Largest shortfall</option>
+        <option value="received_desc" {% if stock_filters.sort == "received_desc" %}selected{% endif %}>Most received</option>
+      </select>
+    </div>
+    <div class="toolbar">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      <a href="{% url 'stock_list' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-kicker">Showing</div>
+    <div class="summary-value">{{ stock_summary.filtered_items }}</div>
+    <div class="summary-note">Out of {{ stock_summary.total_items }} active stock item{{ stock_summary.total_items|pluralize }}.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Low Stock</div>
+    <div class="summary-value">{{ stock_summary.filtered_low_stock_count }}</div>
+    <div class="summary-note">{{ stock_summary.low_stock_count }} item{{ stock_summary.low_stock_count|pluralize }} are low across the full inventory.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Filtered Balance</div>
+    <div class="summary-value">{{ stock_summary.total_balance|floatformat:2 }}</div>
+    <div class="summary-note">Combined stock across the current filtered view.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Shortfall</div>
+    <div class="summary-value">{{ stock_summary.total_shortfall|floatformat:2 }}</div>
+    <div class="summary-note">Total units needed to cover all visible shortages.</div>
+  </div>
+</div>
 
 <div class="card">
   <div class="table-wrap">
-    <table>
+    <table class="stock-table">
       <thead>
         <tr>
           <th>Item</th>
@@ -35,17 +206,43 @@
       <tbody>
         {% for row in stock_data %}
         <tr>
-          <td><strong>{{ row.item.name }}</strong></td>
+          <td>
+            <div class="item-cell">
+              <strong>{{ row.item.name }}</strong>
+              <span class="item-meta">Reorder level {{ row.item.reorder_level|floatformat:2 }} {{ row.item.unit }}</span>
+            </div>
+          </td>
           <td style="color:var(--muted)">{{ row.item.unit }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.total_received|floatformat:2 }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.total_issued|floatformat:2 }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.total_adjustments|floatformat:2 }}</td>
-          <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">{{ row.current_stock|floatformat:2 }}</td>
+          <td class="balance-cell">
+            <div class="balance-main">{{ row.current_stock|floatformat:2 }}</div>
+            <div class="balance-meter">
+              {% if row.current_stock > 0 %}
+              {% if row.item.reorder_level > 0 %}
+              {% widthratio row.current_stock row.item.reorder_level 100 as balance_width %}
+              {% else %}
+              {% widthratio 1 1 100 as balance_width %}
+              {% endif %}
+              <span class="balance-fill{% if row.low %} low{% endif %}" style="width:{{ balance_width }}%;"></span>
+              {% else %}
+              <span class="balance-fill{% if row.low %} low{% endif %}" style="width:0%;"></span>
+              {% endif %}
+            </div>
+          </td>
           <td style="text-align:right;color:var(--muted)">{{ row.item.reorder_level|floatformat:2 }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.reorder_shortfall|floatformat:2 }}</td>
           <td>
-            {% if row.low %}<span class="badge badge-low">Low Stock</span>
-            {% else %}<span class="badge badge-ok">OK</span>{% endif %}
+            <div class="status-stack">
+              {% if row.low %}
+              <span class="badge badge-low">Low Stock</span>
+              <span class="status-note">Needs {{ row.reorder_shortfall|floatformat:2 }} more to recover.</span>
+              {% else %}
+              <span class="badge badge-ok">OK</span>
+              <span class="status-note">Healthy stock level above the reorder threshold.</span>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% empty %}

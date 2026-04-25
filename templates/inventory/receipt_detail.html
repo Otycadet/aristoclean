@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% block title %}{{ batch.receipt_number }} - Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+  .page-copy {
+    margin: -0.65rem 0 1.1rem;
+    max-width: 760px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header no-print">
   <h1>{{ batch.receipt_number }}</h1>
@@ -8,6 +19,7 @@
     <button onclick="window.print()" class="btn btn-primary btn-sm" type="button">Print</button>
   </div>
 </div>
+<p class="page-copy no-print">Review the full issue record here before printing or voiding it. Voiding a receipt will restore stock for every line on this document.</p>
 
 {% if batch.is_voided %}
 <div class="alert alert-warning">
@@ -76,7 +88,7 @@
 {% if not batch.is_voided and user.is_superuser or not batch.is_voided and user.profile.is_manager %}
 <div class="card no-print">
   <div class="card-title">Correction</div>
-  <form method="post" action="{% url 'void_receipt' batch.receipt_number %}">
+  <form method="post" action="{% url 'void_receipt' batch.receipt_number %}" id="voidReceiptForm">
     {% csrf_token %}
     <div class="form-group">
       <label>{{ void_form.reason.label }}</label>
@@ -85,5 +97,26 @@
     <button type="submit" class="btn btn-danger">Void Receipt and Restore Stock</button>
   </form>
 </div>
+{% endif %}
+{% if not batch.is_voided and user.is_superuser or not batch.is_voided and user.profile.is_manager %}
+<script>
+document.getElementById('voidReceiptForm').addEventListener('submit', function (event) {
+  const reasonField = this.querySelector('textarea, input[name="reason"]');
+  const reason = reasonField ? reasonField.value.trim() : '';
+  if (!reason) {
+    event.preventDefault();
+    if (reasonField) {
+      reasonField.focus();
+    }
+    window.alert('Enter a reason before voiding this receipt.');
+    return;
+  }
+
+  const confirmed = window.confirm('Void receipt {{ batch.receipt_number }} and restore all issued stock?');
+  if (!confirmed) {
+    event.preventDefault();
+  }
+});
+</script>
 {% endif %}
 {% endblock %}

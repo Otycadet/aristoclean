@@ -29,6 +29,9 @@ from .permissions import get_user_profile, manager_required, stock_operator_requ
 from .services import (
     annotate_item_stock,
     build_stock_rows,
+    collect_delivery_line_inputs,
+    collect_issue_line_inputs,
+    collect_reorder_line_inputs,
     create_issue_batch,
     display_name_for_user,
     filter_report_batches,
@@ -71,7 +74,52 @@ def dashboard(request):
 @login_required
 def stock_list(request):
     items = annotate_item_stock(Item.objects.filter(active=True)).order_by("name")
-    return render(request, "inventory/stock_list.html", {"stock_data": build_stock_rows(items)})
+    stock_rows = build_stock_rows(items)
+
+    query = (request.GET.get("q") or "").strip()
+    status_filter = (request.GET.get("status") or "all").strip().lower()
+    sort = (request.GET.get("sort") or "name").strip().lower()
+
+    filtered_rows = stock_rows
+    if query:
+        query_lower = query.lower()
+        filtered_rows = [
+            row for row in filtered_rows
+            if query_lower in row["item"].name.lower() or query_lower in row["item"].unit.lower()
+        ]
+
+    if status_filter == "low":
+        filtered_rows = [row for row in filtered_rows if row["low"]]
+    elif status_filter == "ok":
+        filtered_rows = [row for row in filtered_rows if not row["low"]]
+
+    sort_options = {
+        "name": (lambda row: row["item"].name.lower(), False),
+        "balance_desc": (lambda row: (row["current_stock"], row["item"].name.lower()), True),
+        "balance_asc": (lambda row: (row["current_stock"], row["item"].name.lower()), False),
+        "shortfall_desc": (lambda row: (row["reorder_shortfall"], row["item"].name.lower()), True),
+        "received_desc": (lambda row: (row["total_received"], row["item"].name.lower()), True),
+        "low_first": (lambda row: (not row["low"], row["item"].name.lower()), False),
+    }
+    sort_key, reverse = sort_options.get(sort, sort_options["name"])
+    filtered_rows = sorted(filtered_rows, key=sort_key, reverse=reverse)
+
+    return render(request, "inventory/stock_list.html", {
+        "stock_data": filtered_rows,
+        "stock_summary": {
+            "total_items": len(stock_rows),
+            "filtered_items": len(filtered_rows),
+            "low_stock_count": sum(1 for row in stock_rows if row["low"]),
+            "filtered_low_stock_count": sum(1 for row in filtered_rows if row["low"]),
+            "total_balance": sum((row["current_stock"] for row in filtered_rows), Decimal("0.00")),
+            "total_shortfall": sum((row["reorder_shortfall"] for row in filtered_rows), Decimal("0.00")),
+        },
+        "stock_filters": {
+            "q": query,
+            "status": status_filter if status_filter in {"all", "low", "ok"} else "all",
+            "sort": sort if sort in sort_options else "name",
+        },
+    })
 
 
 @login_required
@@ -80,6 +128,7 @@ def reorder_list(request):
     items_qs = annotate_item_stock(Item.objects.filter(active=True)).order_by("name")
     reorder_lines = []
     error = None
+    reorder_line_inputs = collect_reorder_line_inputs(request.POST) if request.method == "POST" else []
 
     if request.method == "POST":
         try:
@@ -99,7 +148,7 @@ def reorder_list(request):
     return render(request, "inventory/reorder_list.html", {
         "items_data": serialize_items_for_js(items_qs),
         "reorder_lines": reorder_lines or [],
-        "reorder_lines_data": serialize_reorder_lines(reorder_lines or []),
+        "reorder_lines_data": serialize_reorder_lines(reorder_lines or []) if reorder_lines else reorder_line_inputs,
         "error": error,
     })
 
@@ -110,6 +159,7 @@ def stock_receive(request):
     received_by_name = display_name_for_user(request.user)
     header_form = DeliveryHeaderForm(request.POST or None, initial={"received_at": date.today()})
     error = None
+    line_inputs = collect_delivery_line_inputs(request.POST) if request.method == "POST" else []
 
     if request.method == "POST":
         lines = parse_delivery_lines(request.POST)
@@ -154,6 +204,7 @@ def stock_receive(request):
     return render(request, "inventory/stock_receive.html", {
         "header_form": header_form,
         "items_data": serialize_items_for_js(items_qs),
+        "delivery_lines_data": line_inputs,
         "error": error,
         "received_by_name": received_by_name,
     })
@@ -171,6 +222,7 @@ def issue_stock(request):
         },
     )
     error = None
+    line_inputs = collect_issue_line_inputs(request.POST) if request.method == "POST" else []
 
     if request.method == "POST":
         lines = parse_issue_lines(request.POST)
@@ -200,6 +252,7 @@ def issue_stock(request):
     return render(request, "inventory/issue_stock.html", {
         "header_form": header_form,
         "items_data": serialize_items_for_js(items_qs),
+        "issue_lines_data": line_inputs,
         "error": error,
         "issued_by_name": issued_by_name,
     })
@@ -236,12 +289,19 @@ def receipts_list(request):
         if date_to:
             batches = batches.filter(issued_at__lte=date_to)
 
-    paginator = Paginator(batches.order_by("-issued_at", "-id"), 25)
+    ordered_batches = batches.order_by("-issued_at", "-id")
+    summary_batches = ordered_batches
+    paginator = Paginator(ordered_batches, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
     return render(request, "inventory/receipts_list.html", {
         "form": form,
         "page_obj": page_obj,
         "batches": page_obj.object_list,
+        "receipt_summary": {
+            "total": summary_batches.count(),
+            "active": summary_batches.filter(is_voided=False).count(),
+            "voided": summary_batches.filter(is_voided=True).count(),
+        },
     })
 
 
@@ -311,6 +371,12 @@ def reports(request):
     summary_rows = []
     detail_page = None
     ran = False
+    report_summary = {
+        "receipt_count": 0,
+        "transaction_count": 0,
+        "location_count": 0,
+        "total_quantity": Decimal("0.00"),
+    }
 
     if form.is_valid():
         ran = True
@@ -342,6 +408,12 @@ def reports(request):
             .select_related("batch__location", "item")
             .order_by("-batch__issued_at", "-batch__id", "item__name")
         )
+        report_summary = {
+            "receipt_count": batch_qs.count(),
+            "transaction_count": detail_qs.count(),
+            "location_count": len({row["location"] for row in summary_rows}),
+            "total_quantity": detail_qs.aggregate(total=Sum("quantity"))["total"] or Decimal("0.00"),
+        }
         paginator = Paginator(detail_qs, 25)
         detail_page = paginator.get_page(request.GET.get("page"))
 
@@ -349,6 +421,7 @@ def reports(request):
         "form": form,
         "summary_rows": summary_rows,
         "detail_page": detail_page,
+        "report_summary": report_summary,
         "ran": ran,
     })
 

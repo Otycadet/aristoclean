@@ -2,17 +2,226 @@
 {% block title %}Issue Stock - Aristoclean{% endblock %}
 {% block extra_head %}
 <style>
-  .line-table { width:100%; border-collapse:collapse; }
-  .line-table th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); font-family:"Helvetica Neue",Arial,sans-serif; font-weight:600; padding:0.5rem 0.5rem 0.5rem 0; border-bottom:1px solid var(--border); }
-  .line-table td { padding:0.4rem 0.4rem 0.4rem 0; vertical-align:middle; }
-  .line-table .col-item { width:45%; }
-  .line-table .col-qty { width:22%; }
-  .line-table .col-stock { width:22%; }
-  .line-table .col-del { width:5%; text-align:center; }
-  .del-btn { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1.1rem; padding:0.25rem 0.4rem; border-radius:3px; }
-  .del-btn:hover { color:var(--danger); background:var(--danger-light); }
-  .stock-hint { font-size:0.75rem; color:var(--muted); font-family:"Helvetica Neue",Arial,sans-serif; }
-  .stock-hint.warn { color:var(--warning); font-weight:600; }
+  .page-copy {
+    margin: -0.65rem 0 1.1rem;
+    max-width: 760px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .field-errors {
+    margin-top: 0.35rem;
+    color: var(--danger);
+    font-size: 0.76rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .items-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .items-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .items-copy {
+    max-width: 720px;
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+  }
+
+  .line-count-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .line-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .line-card {
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 2px);
+    background: linear-gradient(180deg, #fff 0%, #fcfbf8 100%);
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .line-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .line-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .line-card-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) repeat(2, minmax(150px, 1fr));
+    gap: 0.9rem 1rem;
+    align-items: start;
+  }
+
+  .line-field label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+  }
+
+  .line-field input,
+  .line-field select {
+    margin-bottom: 0;
+  }
+
+  .qty-field input {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .field-hint {
+    font-size: 0.76rem;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.45;
+  }
+
+  .field-hint strong {
+    color: var(--text);
+  }
+
+  .metric-panel {
+    min-height: 100%;
+    padding: 0.85rem 0.95rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .metric-panel.warn {
+    border-color: rgba(176, 135, 62, 0.4);
+    background: #fff8eb;
+  }
+
+  .metric-panel.danger {
+    border-color: rgba(160, 63, 52, 0.38);
+    background: #fff1ef;
+  }
+
+  .metric-kicker {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  .metric-value {
+    margin-top: 0.35rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-note {
+    margin-top: 0.35rem;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.4;
+  }
+
+  .del-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1.15rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+  }
+
+  .del-btn:hover {
+    color: var(--danger);
+    background: var(--danger-light);
+  }
+
+  .items-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .empty-lines {
+    padding: 1.1rem 1rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    text-align: center;
+  }
+
+  @media (max-width: 980px) {
+    .line-card-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    .line-card {
+      padding: 0.9rem;
+    }
+
+    .line-card-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -20,8 +229,10 @@
   <h1>Issue Stock</h1>
   <a href="{% url 'receipts_list' %}" class="btn btn-secondary btn-sm">All Receipts</a>
 </div>
+<p class="page-copy">Build each receipt with clear line cards so the issuing team can see stock on hand, projected balance, and reorder risk before submitting.</p>
 
 {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+{% if header_form.non_field_errors %}<div class="alert alert-error">{{ header_form.non_field_errors|join:", " }}</div>{% endif %}
 
 <form method="post" id="issueForm">
   {% csrf_token %}
@@ -31,10 +242,12 @@
       <div class="form-group">
         <label>{{ header_form.location.label }}</label>
         {{ header_form.location }}
+        {% if header_form.location.errors %}<div class="field-errors">{{ header_form.location.errors|join:", " }}</div>{% endif %}
       </div>
       <div class="form-group">
         <label>Issued To</label>
         {{ header_form.issued_to }}
+        {% if header_form.issued_to.errors %}<div class="field-errors">{{ header_form.issued_to.errors|join:", " }}</div>{% endif %}
       </div>
       <div class="form-group">
         <label>Issued By</label>
@@ -43,29 +256,38 @@
       <div class="form-group">
         <label>Date</label>
         {{ header_form.issued_at }}
+        {% if header_form.issued_at.errors %}<div class="field-errors">{{ header_form.issued_at.errors|join:", " }}</div>{% endif %}
       </div>
     </div>
     <div class="form-group">
       <label>Notes</label>
       {{ header_form.notes }}
+      {% if header_form.notes.errors %}<div class="field-errors">{{ header_form.notes.errors|join:", " }}</div>{% endif %}
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">Items to Issue</div>
-    <table class="line-table">
-      <thead>
-        <tr>
-          <th class="col-item">Item</th>
-          <th class="col-qty">Quantity</th>
-          <th class="col-stock">Available Stock</th>
-          <th class="col-del"></th>
-        </tr>
-      </thead>
-      <tbody id="lineBody"></tbody>
-    </table>
-    <div style="margin-top:1rem;">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">Add Item</button>
+    <div class="items-shell">
+      <div class="items-topbar">
+        <div>
+          <div class="card-title">Items to Issue</div>
+          <p class="items-copy">
+            Pick an item, confirm the quantity, and review the live stock impact before you generate the receipt.
+            The projected balance highlights lines that would empty stock or push an item into reorder territory.
+          </p>
+        </div>
+        <span class="line-count-pill" id="lineCountPill">0 Lines</span>
+      </div>
+
+      <div id="lineBody" class="line-list"></div>
+      <div id="emptyLines" class="empty-lines" hidden>No issue lines yet. Add a line to start building this receipt.</div>
+
+      <div class="items-actions">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">Add Item</button>
+        <div class="field-hint">
+          <strong>Tip:</strong> keep an eye on projected balance before submitting, especially for low-stock items.
+        </div>
+      </div>
     </div>
   </div>
 
@@ -76,83 +298,178 @@
 </form>
 
 {{ items_data|json_script:"issue-stock-items" }}
+{{ issue_lines_data|json_script:"issue-lines-data" }}
 <script>
 const ITEMS = JSON.parse(document.getElementById('issue-stock-items').textContent);
+const PRESET_LINES = JSON.parse(document.getElementById('issue-lines-data').textContent);
 const ITEM_MAP = {};
 ITEMS.forEach(item => { ITEM_MAP[item.id] = item; });
+const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
 let lineCount = 0;
 
-function addLine() {
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toFixed(2);
+}
+
+function addLine(itemId = '', qty = '') {
   const idx = lineCount++;
-  const tbody = document.getElementById('lineBody');
-  const tr = document.createElement('tr');
-  tr.id = `line_${idx}`;
-  tr.innerHTML = `
-    <td class="col-item">
-      <input type="hidden" name="issue_item_${idx}" id="issue_item_id_${idx}">
-      <input type="text" id="issue_item_label_${idx}" placeholder="Select item" autocomplete="off" oninput="handleItemInput(this, ${idx})" required>
-      <div id="suggest_${idx}" style="position:relative"></div>
-    </td>
-    <td class="col-qty">
-      <input type="number" name="issue_qty_${idx}" min="0.01" step="0.01" placeholder="0.00" oninput="checkQty(${idx})" required>
-    </td>
-    <td class="col-stock">
-      <span id="stock_${idx}" class="stock-hint">-</span>
-    </td>
-    <td class="col-del">
-      <button type="button" class="del-btn" onclick="removeLine(${idx})">x</button>
-    </td>
+  const container = document.getElementById('lineBody');
+  const card = document.createElement('div');
+  card.className = 'line-card';
+  card.id = `line_${idx}`;
+  card.innerHTML = `
+    <div class="line-card-head">
+      <span class="line-badge" data-line-badge>Line ${container.children.length + 1}</span>
+      <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">&times;</button>
+    </div>
+    <div class="line-card-grid">
+      <div class="line-field">
+        <label for="issue_item_${idx}">Item</label>
+        <select name="issue_item_${idx}" id="issue_item_${idx}" onchange="updateLineState(${idx})">
+          <option value="">Select item</option>
+          ${ITEM_OPTIONS}
+        </select>
+        <div class="field-hint">Only active stocked items are shown here.</div>
+      </div>
+
+      <div class="line-field">
+        <label for="issue_unit_${idx}">Unit</label>
+        <input type="text" id="issue_unit_${idx}" readonly placeholder="Unit">
+      </div>
+
+      <div class="line-field qty-field">
+        <label for="issue_qty_${idx}">Qty to Issue</label>
+        <input type="number" name="issue_qty_${idx}" id="issue_qty_${idx}" value="${escapeHtml(qty)}" min="0.01" step="0.01" placeholder="0.00" oninput="updateLineState(${idx})">
+      </div>
+
+      <div class="metric-panel" id="stock_panel_${idx}">
+        <div class="metric-kicker">Available Now</div>
+        <div class="metric-value" id="stock_${idx}">0.00</div>
+        <div class="metric-note" id="stock_note_${idx}">Select an item to show available stock.</div>
+      </div>
+
+      <div class="metric-panel" id="projected_panel_${idx}">
+        <div class="metric-kicker">Projected Balance</div>
+        <div class="metric-value" id="projected_${idx}">0.00</div>
+        <div class="metric-note" id="projected_note_${idx}">Projected balance updates as you type.</div>
+      </div>
+    </div>
   `;
-  tbody.appendChild(tr);
+  container.appendChild(card);
+
+  if (itemId) {
+    document.getElementById(`issue_item_${idx}`).value = itemId;
+  }
+
+  updateLineState(idx);
+  refreshLineMeta();
 }
 
 function removeLine(idx) {
   const el = document.getElementById(`line_${idx}`);
-  if (el) el.remove();
+  if (el) {
+    el.remove();
+    refreshLineMeta();
+  }
 }
 
-function handleItemInput(input, idx) {
-  const val = input.value.trim().toLowerCase();
-  const box = document.getElementById(`suggest_${idx}`);
-  const matches = ITEMS.filter(item => item.name.toLowerCase().includes(val)).slice(0, 8);
-  document.getElementById(`issue_item_id_${idx}`).value = '';
-  document.getElementById(`stock_${idx}`).textContent = val ? 'Select from list' : '-';
-  if (!val || !matches.length) {
-    box.innerHTML = '';
+function refreshLineMeta() {
+  const cards = Array.from(document.querySelectorAll('.line-card'));
+  cards.forEach((card, index) => {
+    const badge = card.querySelector('[data-line-badge]');
+    if (badge) {
+      badge.textContent = `Line ${index + 1}`;
+    }
+  });
+
+  const count = cards.length;
+  document.getElementById('lineCountPill').textContent = `${count} ${count === 1 ? 'Line' : 'Lines'}`;
+  document.getElementById('emptyLines').hidden = count !== 0;
+}
+
+function updateLineState(idx) {
+  const itemId = document.getElementById(`issue_item_${idx}`).value;
+  const qtyValue = parseFloat(document.getElementById(`issue_qty_${idx}`).value || '0');
+  const unitField = document.getElementById(`issue_unit_${idx}`);
+  const stockPanel = document.getElementById(`stock_panel_${idx}`);
+  const projectedPanel = document.getElementById(`projected_panel_${idx}`);
+  const stockValue = document.getElementById(`stock_${idx}`);
+  const stockNote = document.getElementById(`stock_note_${idx}`);
+  const projectedValue = document.getElementById(`projected_${idx}`);
+  const projectedNote = document.getElementById(`projected_note_${idx}`);
+
+  stockPanel.className = 'metric-panel';
+  projectedPanel.className = 'metric-panel';
+
+  if (!itemId) {
+    unitField.value = '';
+    stockValue.textContent = '0.00';
+    stockNote.textContent = 'Select an item to show available stock.';
+    projectedValue.textContent = '0.00';
+    projectedNote.textContent = 'Projected balance updates as you type.';
     return;
   }
-  box.innerHTML = `<div style="position:absolute;top:0;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:4px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.1)">
-    ${matches.map(item => `<div onclick="selectItem(${idx}, ${item.id})" style="padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;font-family:'Helvetica Neue',Arial,sans-serif;" onmouseover="this.style.background='#f0f0ec'" onmouseout="this.style.background=''">${item.name} <span style="color:var(--muted);font-size:0.75rem">${item.unit} | ${item.stock.toFixed(2)} available</span></div>`).join('')}
-  </div>`;
-}
 
-function selectItem(idx, itemId) {
   const item = ITEM_MAP[itemId];
-  document.getElementById(`issue_item_id_${idx}`).value = item.id;
-  document.getElementById(`issue_item_label_${idx}`).value = item.name;
-  document.getElementById(`suggest_${idx}`).innerHTML = '';
-  setStockDisplay(idx, item);
+  if (!item) {
+    unitField.value = '';
+    stockValue.textContent = '0.00';
+    stockNote.textContent = 'This item could not be loaded.';
+    projectedValue.textContent = '0.00';
+    projectedNote.textContent = 'Projected balance unavailable.';
+    projectedPanel.classList.add('danger');
+    return;
+  }
+
+  const currentStock = Number(item.stock || 0);
+  const projected = currentStock - (Number.isFinite(qtyValue) ? qtyValue : 0);
+  unitField.value = item.unit;
+  stockValue.textContent = `${formatNumber(currentStock)} ${item.unit}`;
+  projectedValue.textContent = `${formatNumber(projected)} ${item.unit}`;
+
+  if (currentStock <= 0) {
+    stockPanel.classList.add('danger');
+    stockNote.textContent = 'No stock is currently available for this item.';
+  } else if (currentStock <= Number(item.reorder_level || 0)) {
+    stockPanel.classList.add('warn');
+    stockNote.textContent = `Already at or below reorder level of ${formatNumber(item.reorder_level)} ${item.unit}.`;
+  } else {
+    stockNote.textContent = `Healthy stock above reorder level of ${formatNumber(item.reorder_level)} ${item.unit}.`;
+  }
+
+  if (!qtyValue) {
+    projectedNote.textContent = 'Enter a quantity to preview the remaining stock.';
+    return;
+  }
+
+  if (qtyValue > currentStock) {
+    projectedPanel.classList.add('danger');
+    projectedNote.textContent = `This exceeds available stock by ${formatNumber(qtyValue - currentStock)} ${item.unit}.`;
+  } else if (projected <= Number(item.reorder_level || 0)) {
+    projectedPanel.classList.add('warn');
+    projectedNote.textContent = `This would leave the item at or below its reorder level of ${formatNumber(item.reorder_level)} ${item.unit}.`;
+  } else {
+    projectedNote.textContent = 'Projected balance stays above the reorder threshold.';
+  }
 }
 
-function setStockDisplay(idx, item) {
-  const el = document.getElementById(`stock_${idx}`);
-  el.textContent = `${item.stock.toFixed(2)} ${item.unit}`;
-  el.className = item.stock <= 0 ? 'stock-hint warn' : 'stock-hint';
-}
-
-function checkQty(idx) {
-  const itemId = parseInt(document.getElementById(`issue_item_id_${idx}`).value || '0', 10);
-  const qty = parseFloat(document.querySelector(`[name=issue_qty_${idx}]`).value || '0');
-  const item = ITEM_MAP[itemId];
-  const el = document.getElementById(`stock_${idx}`);
-  if (!item) return;
-  el.className = qty > item.stock ? 'stock-hint warn' : 'stock-hint';
-}
-
-document.addEventListener('click', () => {
-  document.querySelectorAll('[id^=suggest_]').forEach(el => el.innerHTML = '');
+window.addEventListener('DOMContentLoaded', () => {
+  if (PRESET_LINES.length) {
+    PRESET_LINES.forEach(line => addLine(line.item_id, line.quantity));
+  } else {
+    addLine();
+    addLine();
+    addLine();
+  }
 });
-
-addLine(); addLine(); addLine();
 </script>
 {% endblock %}

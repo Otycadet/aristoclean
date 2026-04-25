@@ -2,238 +2,478 @@
 {% block title %}Reorder Items - Aristoclean{% endblock %}
 {% block extra_head %}
 <style>
-    .line-table {
-        width: 100%;
-        border-collapse: collapse;
+  .page-copy {
+    margin: -0.65rem 0 1.1rem;
+    max-width: 760px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .items-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .items-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .items-copy {
+    max-width: 720px;
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+  }
+
+  .line-count-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .line-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .line-card {
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 2px);
+    background: linear-gradient(180deg, #fff 0%, #fcfbf8 100%);
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .line-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .line-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .line-card-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(140px, 0.8fr) minmax(150px, 0.8fr) repeat(2, minmax(160px, 1fr));
+    gap: 0.9rem 1rem;
+    align-items: start;
+  }
+
+  .line-field label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+  }
+
+  .line-field input,
+  .line-field select {
+    margin-bottom: 0;
+    width: 100%;
+  }
+
+  .qty-field input {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-panel {
+    min-height: 100%;
+    padding: 0.85rem 0.95rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .metric-panel.warn {
+    border-color: rgba(176, 135, 62, 0.4);
+    background: #fff8eb;
+  }
+
+  .metric-kicker {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  .metric-value {
+    margin-top: 0.35rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-note {
+    margin-top: 0.35rem;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.4;
+  }
+
+  .field-hint {
+    font-size: 0.76rem;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.45;
+  }
+
+  .field-hint strong {
+    color: var(--text);
+  }
+
+  .line-tools {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    margin-top: 0.8rem;
+  }
+
+  .del-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1.15rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+  }
+
+  .del-btn:hover {
+    color: var(--danger);
+    background: var(--danger-light);
+  }
+
+  .items-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .empty-lines {
+    padding: 1.1rem 1rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    text-align: center;
+  }
+
+  .summary-table td,
+  .summary-table th {
+    padding-right: 0.75rem;
+  }
+
+  .text-right {
+    text-align: right;
+  }
+
+  @media (max-width: 980px) {
+    .line-card-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    .line-card {
+      padding: 0.9rem;
     }
 
-    .line-table th {
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: var(--muted);
-        font-family: "Helvetica Neue", Arial, sans-serif;
-        font-weight: 600;
-        padding: 0.5rem 0.5rem 0.5rem 0;
-        border-bottom: 1px solid var(--border);
+    .line-card-grid {
+      grid-template-columns: 1fr;
     }
-
-    .line-table td {
-        padding: 0.4rem 0.4rem 0.4rem 0;
-        vertical-align: top;
-    }
-
-    .line-table input,
-    .line-table select {
-        margin-bottom: 0;
-        width: 100%;
-    }
-
-    .line-table .col-item {
-        width: 38%;
-    }
-
-    .line-table .col-unit {
-        width: 16%;
-    }
-
-    .line-table .col-stock {
-        width: 16%;
-        text-align: right;
-    }
-
-    .line-table .col-qty {
-        width: 18%;
-    }
-
-    .line-table .col-del {
-        width: 8%;
-        text-align: center;
-    }
-
-    .del-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: var(--muted);
-        font-size: 1.1rem;
-        padding: 0.25rem 0.4rem;
-        border-radius: 3px;
-    }
-
-    .del-btn:hover {
-        color: var(--danger);
-        background: var(--danger-light);
-    }
-
-    .field-hint {
-        font-size: 0.75rem;
-        color: var(--muted);
-        margin-top: 0.25rem;
-    }
-
-    .summary-table td,
-    .summary-table th {
-        padding-right: 0.75rem;
-    }
-
-    .text-right {
-        text-align: right;
-    }
+  }
 </style>
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Reorder Items</h1>
-    <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">Back to Stock</a>
+  <h1>Reorder Items</h1>
+  <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">Back to Stock</a>
 </div>
+<p class="page-copy">Build a reorder plan with the same card layout used elsewhere in stock operations, including live stock, reorder level, and suggested quantity to order.</p>
 
 {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
 
 <form method="post" id="reorderForm">
-    {% csrf_token %}
+  {% csrf_token %}
 
-    <div class="card">
-        <div class="card-title">Reorder Lines</div>
-        <div class="table-wrap">
-            <table class="line-table">
-                <thead>
-                    <tr>
-                        <th class="col-item">Item</th>
-                        <th class="col-unit">Unit</th>
-                        <th class="col-stock">Stock On Hand</th>
-                        <th class="col-qty">Qty to Order</th>
-                        <th class="col-del"></th>
-                    </tr>
-                </thead>
-                <tbody id="lineBody"></tbody>
-            </table>
+  <div class="card">
+    <div class="items-shell">
+      <div class="items-topbar">
+        <div>
+          <div class="card-title">Reorder Lines</div>
+          <p class="items-copy">
+            Choose the items you want to reorder, review the current stock and reorder threshold, then set the quantity
+            to purchase. The suggested quantity mirrors the current shortfall.
+          </p>
         </div>
-        <div style="margin-top:1rem; display:flex; gap:0.75rem; flex-wrap:wrap;">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">Add Item</button>
-            <span class="field-hint">Use the dropdown to pick an item and enter the reorder quantity. Current stock will
-                update automatically.</span>
-        </div>
-    </div>
+        <span class="line-count-pill" id="lineCountPill">0 Lines</span>
+      </div>
 
-    <div style="display:flex;justify-content:flex-end;gap:1rem; margin-top:1rem;">
-        <a href="{% url 'stock_list' %}" class="btn btn-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary">Prepare Reorder List</button>
+      <div id="lineBody" class="line-list"></div>
+      <div id="emptyLines" class="empty-lines" hidden>No reorder lines yet. Add a line to start building a restock plan.</div>
+
+      <div class="items-actions">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">Add Item</button>
+        <div class="field-hint">
+          <strong>Tip:</strong> use the suggested quantity when you want to cover the current shortfall exactly.
+        </div>
+      </div>
     </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;gap:1rem; margin-top:1rem;">
+    <a href="{% url 'stock_list' %}" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">Prepare Reorder List</button>
+  </div>
 </form>
 
 {% if reorder_lines %}
 <div class="card" style="margin-top:1rem;">
-    <div class="card-title">Prepared Reorder Summary</div>
-    <div class="table-wrap">
-        <table class="line-table summary-table">
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Unit</th>
-                    <th class="text-right">Stock On Hand</th>
-                    <th class="text-right">Qty to Order</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for line in reorder_lines %}
-                <tr>
-                    <td>{{ line.item.name }}</td>
-                    <td>{{ line.item.unit }}</td>
-                    <td class="text-right">{{ line.stock|floatformat:2 }}</td>
-                    <td class="text-right">{{ line.quantity|floatformat:2 }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+  <div class="card-title">Prepared Reorder Summary</div>
+  <div class="table-wrap">
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Unit</th>
+          <th class="text-right">Stock On Hand</th>
+          <th class="text-right">Qty to Order</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in reorder_lines %}
+        <tr>
+          <td>{{ line.item.name }}</td>
+          <td>{{ line.item.unit }}</td>
+          <td class="text-right">{{ line.stock|floatformat:2 }}</td>
+          <td class="text-right">{{ line.quantity|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endif %}
 
 {{ items_data|json_script:"reorder-items" }}
 {{ reorder_lines_data|json_script:"reorder-lines" }}
 <script>
-    const ITEMS = JSON.parse(document.getElementById('reorder-items').textContent);
-    const PRESET_LINES = JSON.parse(document.getElementById('reorder-lines').textContent);
-    const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
-    let lineCount = 0;
+  const ITEMS = JSON.parse(document.getElementById('reorder-items').textContent);
+  const PRESET_LINES = JSON.parse(document.getElementById('reorder-lines').textContent);
+  const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
+  const ITEM_MAP = {};
+  ITEMS.forEach(item => { ITEM_MAP[item.id] = item; });
+  let lineCount = 0;
 
-    function escapeHtml(value) {
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatNumber(value) {
+    return Number(value || 0).toFixed(2);
+  }
+
+  function addLine(itemId = '', qty = '') {
+    const idx = lineCount++;
+    const container = document.getElementById('lineBody');
+    const card = document.createElement('div');
+    card.className = 'line-card';
+    card.id = `line_${idx}`;
+    card.innerHTML = `
+      <div class="line-card-head">
+        <span class="line-badge" data-line-badge>Line ${container.children.length + 1}</span>
+        <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">&times;</button>
+      </div>
+      <div class="line-card-grid">
+        <div class="line-field">
+          <label for="item_select_${idx}">Item</label>
+          <select name="line_item_${idx}" id="item_select_${idx}" onchange="updateLineState(${idx})">
+            <option value="">Select item</option>
+            ${ITEM_OPTIONS}
+          </select>
+        </div>
+
+        <div class="line-field">
+          <label for="unit_${idx}">Unit</label>
+          <input type="text" name="line_unit_${idx}" id="unit_${idx}" readonly placeholder="Unit">
+        </div>
+
+        <div class="line-field qty-field">
+          <label for="qty_${idx}">Qty to Order</label>
+          <input type="number" name="line_qty_${idx}" id="qty_${idx}" value="${escapeHtml(qty)}" min="0.01" step="0.01" placeholder="0.00" oninput="updateLineState(${idx})">
+        </div>
+
+        <div class="metric-panel" id="stock_panel_${idx}">
+          <div class="metric-kicker">Stock On Hand</div>
+          <div class="metric-value" id="stock_${idx}">0.00</div>
+          <div class="metric-note" id="stock_note_${idx}">Select an item to see its current balance.</div>
+        </div>
+
+        <div class="metric-panel" id="suggest_panel_${idx}">
+          <div class="metric-kicker">Suggested Qty</div>
+          <div class="metric-value" id="shortfall_${idx}">0.00</div>
+          <div class="metric-note" id="suggest_note_${idx}">Suggested quantity mirrors the current shortfall.</div>
+        </div>
+      </div>
+      <div class="line-tools">
+        <div class="field-hint" id="target_note_${idx}">Choose an item to compare stock against its reorder level.</div>
+        <button type="button" class="btn btn-secondary btn-sm" id="suggest_btn_${idx}" onclick="applySuggestedQty(${idx})" disabled>Use Suggested Qty</button>
+      </div>
+    `;
+    container.appendChild(card);
+
+    if (itemId) {
+      document.getElementById(`item_select_${idx}`).value = itemId;
     }
 
-    function addLine(itemId = '', qty = '') {
-        const idx = lineCount++;
-        const tbody = document.getElementById('lineBody');
-        const tr = document.createElement('tr');
-        tr.id = `line_${idx}`;
-        tr.innerHTML = `
-    <td class="col-item">
-      <select name="line_item_${idx}" id="item_select_${idx}" onchange="selectItem(${idx})">
-        <option value="">Select item</option>
-        ${ITEM_OPTIONS}
-      </select>
-    </td>
-    <td class="col-unit">
-      <input type="text" name="line_unit_${idx}" id="unit_${idx}" readonly placeholder="Unit">
-    </td>
-    <td class="col-stock">
-      <span id="stock_${idx}">0.00</span>
-    </td>
-    <td class="col-qty">
-      <input type="number" name="line_qty_${idx}" id="qty_${idx}" value="${escapeHtml(qty)}" min="0.01" step="0.01" placeholder="0.00">
-    </td>
-    <td class="col-del">
-      <button type="button" class="del-btn" onclick="removeLine(${idx})" title="Remove">&times;</button>
-    </td>
-  `;
-        tbody.appendChild(tr);
+    updateLineState(idx);
+    refreshLineMeta();
+  }
 
-        if (itemId) {
-            document.getElementById(`item_select_${idx}`).value = itemId;
-            selectItem(idx);
-        }
+  function removeLine(idx) {
+    const el = document.getElementById(`line_${idx}`);
+    if (el) {
+      el.remove();
+      refreshLineMeta();
     }
+  }
 
-    function removeLine(idx) {
-        const el = document.getElementById(`line_${idx}`);
-        if (el) el.remove();
-    }
-
-    function selectItem(idx) {
-        const select = document.getElementById(`item_select_${idx}`);
-        const itemId = select.value;
-        const unitField = document.getElementById(`unit_${idx}`);
-        const stockValue = document.getElementById(`stock_${idx}`);
-        if (!itemId) {
-            unitField.value = '';
-            stockValue.textContent = '0.00';
-            return;
-        }
-
-        const item = ITEMS.find(entry => String(entry.id) === String(itemId));
-        if (!item) {
-            unitField.value = '';
-            stockValue.textContent = '0.00';
-            return;
-        }
-
-        unitField.value = item.unit;
-        stockValue.textContent = Number(item.stock).toFixed(2);
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        if (PRESET_LINES.length) {
-            PRESET_LINES.forEach(line => addLine(line.item_id, line.quantity));
-        } else {
-            addLine();
-            addLine();
-        }
+  function refreshLineMeta() {
+    const cards = Array.from(document.querySelectorAll('.line-card'));
+    cards.forEach((card, index) => {
+      const badge = card.querySelector('[data-line-badge]');
+      if (badge) {
+        badge.textContent = `Line ${index + 1}`;
+      }
     });
+
+    const count = cards.length;
+    document.getElementById('lineCountPill').textContent = `${count} ${count === 1 ? 'Line' : 'Lines'}`;
+    document.getElementById('emptyLines').hidden = count !== 0;
+  }
+
+  function updateLineState(idx) {
+    const itemId = document.getElementById(`item_select_${idx}`).value;
+    const item = ITEM_MAP[itemId];
+    const unitField = document.getElementById(`unit_${idx}`);
+    const stockPanel = document.getElementById(`stock_panel_${idx}`);
+    const suggestPanel = document.getElementById(`suggest_panel_${idx}`);
+    const stockValue = document.getElementById(`stock_${idx}`);
+    const stockNote = document.getElementById(`stock_note_${idx}`);
+    const shortfallValue = document.getElementById(`shortfall_${idx}`);
+    const suggestNote = document.getElementById(`suggest_note_${idx}`);
+    const targetNote = document.getElementById(`target_note_${idx}`);
+    const suggestBtn = document.getElementById(`suggest_btn_${idx}`);
+
+    stockPanel.className = 'metric-panel';
+    suggestPanel.className = 'metric-panel';
+    suggestBtn.disabled = true;
+
+    if (!item) {
+      unitField.value = '';
+      stockValue.textContent = '0.00';
+      stockNote.textContent = 'Select an item to see its current balance.';
+      shortfallValue.textContent = '0.00';
+      suggestNote.textContent = 'Suggested quantity mirrors the current shortfall.';
+      targetNote.textContent = 'Choose an item to compare stock against its reorder level.';
+      return;
+    }
+
+    const stock = Number(item.stock || 0);
+    const reorderLevel = Number(item.reorder_level || 0);
+    const shortfall = Math.max(reorderLevel - stock, 0);
+    unitField.value = item.unit;
+    stockValue.textContent = `${formatNumber(stock)} ${item.unit}`;
+    shortfallValue.textContent = `${formatNumber(shortfall)} ${item.unit}`;
+    targetNote.textContent = `Reorder level: ${formatNumber(reorderLevel)} ${item.unit}.`;
+
+    if (stock <= reorderLevel) {
+      stockPanel.classList.add('warn');
+      stockNote.textContent = 'This item is currently at or below its reorder level.';
+    } else {
+      stockNote.textContent = 'Current stock is above the reorder threshold.';
+    }
+
+    if (shortfall > 0) {
+      suggestPanel.classList.add('warn');
+      suggestNote.textContent = 'Use the suggested quantity to cover the full current shortfall.';
+      suggestBtn.disabled = false;
+    } else {
+      suggestNote.textContent = 'No shortfall right now. You can still enter a custom reorder quantity.';
+    }
+  }
+
+  function applySuggestedQty(idx) {
+    const itemId = document.getElementById(`item_select_${idx}`).value;
+    const item = ITEM_MAP[itemId];
+    if (!item) {
+      return;
+    }
+
+    const shortfall = Math.max(Number(item.reorder_level || 0) - Number(item.stock || 0), 0);
+    document.getElementById(`qty_${idx}`).value = shortfall > 0 ? formatNumber(shortfall) : '';
+    updateLineState(idx);
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    if (PRESET_LINES.length) {
+      PRESET_LINES.forEach(line => addLine(line.item_id, line.quantity));
+    } else {
+      addLine();
+      addLine();
+    }
+  });
 </script>
 {% endblock %}

@@ -235,18 +235,80 @@ def parse_reorder_lines(post_data):
 
 def parse_issue_lines(post_data):
     lines = []
-    index = 0
-    while f"issue_item_{index}" in post_data:
+    line_indices = sorted({
+        int(match.group(1))
+        for key in post_data.keys()
+        for match in [re.match(r"^issue_(?:item|qty)_(\d+)$", key)]
+        if match
+    })
+
+    for index in line_indices:
         item_id = post_data.get(f"issue_item_{index}", "").strip()
         qty = post_data.get(f"issue_qty_{index}", "").strip()
-        if item_id and qty:
-            try:
-                item = Item.objects.get(pk=int(item_id), active=True)
-            except (Item.DoesNotExist, ValueError):
-                raise ValueError("Select valid items from the list of active stock items.")
-            lines.append({"item": item, "quantity": decimal_from_post(qty, f"quantity for {item.name}")})
-        index += 1
+        if not any([item_id, qty]):
+            continue
+        if not item_id:
+            raise ValueError("Select an item for each issue line you add.")
+        if not qty:
+            raise ValueError("Enter quantity for each issue line you add.")
+
+        try:
+            item = Item.objects.get(pk=int(item_id), active=True)
+        except (Item.DoesNotExist, ValueError):
+            raise ValueError("Select valid items from the list of active stock items.")
+        lines.append({"item": item, "quantity": decimal_from_post(qty, f"quantity for {item.name}")})
     return lines if lines else None
+
+
+def collect_delivery_line_inputs(post_data):
+    lines = []
+    line_indices = sorted({
+        int(match.group(1))
+        for key in post_data.keys()
+        for match in [re.match(r"^line_(?:item|new_item|unit|reorder|qty)_(\d+)$", key)]
+        if match
+    })
+    for index in line_indices:
+        lines.append({
+            "item_id": post_data.get(f"line_item_{index}", "").strip(),
+            "new_name": post_data.get(f"line_new_item_{index}", "").strip(),
+            "unit": post_data.get(f"line_unit_{index}", "").strip(),
+            "reorder": post_data.get(f"line_reorder_{index}", "").strip(),
+            "quantity": post_data.get(f"line_qty_{index}", "").strip(),
+        })
+    return [line for line in lines if any(line.values())]
+
+
+def collect_reorder_line_inputs(post_data):
+    lines = []
+    line_indices = sorted({
+        int(match.group(1))
+        for key in post_data.keys()
+        for match in [re.match(r"^line_(?:item|qty)_(\d+)$", key)]
+        if match
+    })
+    for index in line_indices:
+        lines.append({
+            "item_id": post_data.get(f"line_item_{index}", "").strip(),
+            "quantity": post_data.get(f"line_qty_{index}", "").strip(),
+        })
+    return [line for line in lines if any(line.values())]
+
+
+def collect_issue_line_inputs(post_data):
+    lines = []
+    line_indices = sorted({
+        int(match.group(1))
+        for key in post_data.keys()
+        for match in [re.match(r"^issue_(?:item|qty)_(\d+)$", key)]
+        if match
+    })
+    for index in line_indices:
+        lines.append({
+            "item_id": post_data.get(f"issue_item_{index}", "").strip(),
+            "quantity": post_data.get(f"issue_qty_{index}", "").strip(),
+        })
+    return [line for line in lines if any(line.values())]
 
 
 @transaction.atomic

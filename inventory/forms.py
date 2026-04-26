@@ -180,8 +180,11 @@ class UserCreateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.acting_user = kwargs.pop("acting_user", None)
+        role_choices = kwargs.pop("role_choices", None)
         super().__init__(*args, **kwargs)
-        if not getattr(self.acting_user, "is_superuser", False):
+        if role_choices is not None:
+            self.fields["role"].choices = role_choices
+        if "role" in self.fields and not self.fields["role"].choices:
             self.fields.pop("role", None)
 
     def clean_username(self):
@@ -224,7 +227,7 @@ class UserCreateForm(forms.ModelForm):
             profile, _ = UserProfile.objects.get_or_create(user=user)
             profile.role = (
                 self.cleaned_data["role"]
-                if getattr(self.acting_user, "is_superuser", False)
+                if "role" in self.cleaned_data
                 else UserProfile.ROLE_STOREKEEPER
             )
             profile.save()
@@ -246,9 +249,12 @@ class UserUpdateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.acting_user = kwargs.pop("acting_user", None)
+        role_choices = kwargs.pop("role_choices", None)
         super().__init__(*args, **kwargs)
         profile = getattr(self.instance, "profile", None)
-        if getattr(self.acting_user, "is_superuser", False):
+        if role_choices is not None:
+            self.fields["role"].choices = role_choices
+        if "role" in self.fields and self.fields["role"].choices:
             self.fields["role"].initial = getattr(profile, "role", UserProfile.ROLE_STOREKEEPER)
         else:
             self.fields.pop("role", None)
@@ -264,7 +270,7 @@ class UserUpdateForm(forms.ModelForm):
                 user.set_password(password)
                 user.save(update_fields=["password"])
             profile, _ = UserProfile.objects.get_or_create(user=user)
-            if getattr(self.acting_user, "is_superuser", False):
+            if "role" in self.cleaned_data:
                 profile.role = self.cleaned_data["role"]
             profile.save()
         return user

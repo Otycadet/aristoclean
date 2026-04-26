@@ -118,7 +118,7 @@
 <div class="page-header">
   <h1>Stock Levels</h1>
   <div class="toolbar">
-    {% if user.is_superuser or user.profile.is_manager %}
+    {% if user.is_superuser or user.profile.can_oversee_operations %}
     <a href="{% url 'stock_reorder' %}" class="btn btn-secondary btn-sm">Reorder</a>
     <a href="{% url 'low_stock_report' %}" class="btn btn-secondary btn-sm">Reorder Report</a>
     <a href="{% url 'stock_adjustment_create' %}" class="btn btn-secondary btn-sm">Adjust Stock</a>

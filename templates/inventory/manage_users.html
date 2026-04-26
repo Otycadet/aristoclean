@@ -33,8 +33,8 @@
   <div class="card">
     <div class="card-title">User Creation</div>
     <div style="color:var(--muted);font-size:0.88rem;line-height:1.6;">
-      Only the superuser can create new user accounts or assign roles. Managers can still update profile details,
-      passwords, and sign-in status for existing users.
+      Only superadmins and admins can create new user accounts or manage account roles. Managers do not have access
+      to this screen in the stricter chain.
     </div>
   </div>
   {% endif %}
@@ -43,7 +43,9 @@
     <div class="card">
       <div class="card-title">Roles</div>
       <div style="color:var(--muted);font-size:0.82rem;font-family:'Helvetica Neue',Arial,sans-serif;">
-        Viewer can only see dashboard, stock, and receipts. Store Keeper can also receive and issue stock. Manager can also access reports and management pages. Only the superuser can create users or change roles.
+        Superadmin is the Django superuser. Admin can manage every non-superadmin role, but cannot change its own role.
+        Manager can only manage viewer and store keeper accounts, and can only assign roles below manager.
+        Store Keeper and Viewer permissions stay the same.
       </div>
     </div>
 
@@ -69,6 +71,7 @@
         </div>
       </div>
 
+      {% if row.can_manage_account %}
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="update">
@@ -94,11 +97,11 @@
           </div>
           <div class="form-group">
             <label>Role</label>
-            {% if can_assign_roles and row.form.role %}
+            {% if row.can_edit_role and row.form.role %}
               {{ row.form.role }}
               {% if row.form.role.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.role.errors.0 }}</div>{% endif %}
             {% else %}
-              <input type="text" value="{{ row.user.profile.get_role_display }}" readonly>
+              <input type="text" value="{{ row.effective_role_label }}" readonly>
             {% endif %}
           </div>
           <div class="form-group">
@@ -116,6 +119,33 @@
         </div>
         <button type="submit" class="btn btn-primary btn-sm">Save User</button>
       </form>
+      {% else %}
+      <div class="form-row">
+        <div class="form-group">
+          <label>First name</label>
+          <input type="text" value="{{ row.user.first_name }}" readonly>
+        </div>
+        <div class="form-group">
+          <label>Last name</label>
+          <input type="text" value="{{ row.user.last_name }}" readonly>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="text" value="{{ row.user.email }}" readonly>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <input type="text" value="{{ row.effective_role_label }}" readonly>
+        </div>
+      </div>
+      <div style="color:var(--muted);font-size:0.84rem;line-height:1.5;">
+        {% if row.is_superadmin %}
+        This account is a superadmin and its role cannot be changed from this screen.
+        {% else %}
+        You do not have permission to edit this account.
+        {% endif %}
+      </div>
+      {% endif %}
     </div>
     {% empty %}
     <div class="card">

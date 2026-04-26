@@ -298,7 +298,7 @@
   {% if user.is_superuser or user.profile.can_view_reports %}
   <a href="{% url 'reports' %}" {% if 'report' in request.resolver_match.url_name %}class="active"{% endif %}>Reports</a>
   {% endif %}
-  {% if user.is_superuser or user.profile.is_manager %}
+  {% if user.is_superuser or user.profile.can_manage_settings %}
   <a href="{% url 'manage_items' %}" {% if 'manage' in request.resolver_match.url_name %}class="active"{% endif %}>Manage</a>
   {% endif %}
   <div class="nav-spacer"></div>

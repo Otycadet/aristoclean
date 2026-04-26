@@ -162,10 +162,12 @@ class UserProfile(models.Model):
     ROLE_VIEWER = "viewer"
     ROLE_STOREKEEPER = "storekeeper"
     ROLE_MANAGER = "manager"
+    ROLE_ADMIN = "admin"
     ROLE_CHOICES = [
         (ROLE_VIEWER, "Viewer"),
         (ROLE_STOREKEEPER, "Store Keeper"),
-        (ROLE_MANAGER, "Manager / Admin"),
+        (ROLE_MANAGER, "Manager"),
+        (ROLE_ADMIN, "Admin"),
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
@@ -179,8 +181,12 @@ class UserProfile(models.Model):
         return self.role == self.ROLE_VIEWER
 
     @property
+    def is_admin(self):
+        return self.role == self.ROLE_ADMIN
+
+    @property
     def is_manager(self):
-        return self.user.is_superuser or self.role == self.ROLE_MANAGER
+        return self.role == self.ROLE_MANAGER
 
     @property
     def can_operate_stock(self):
@@ -189,3 +195,11 @@ class UserProfile(models.Model):
     @property
     def can_view_reports(self):
         return self.user.is_superuser or self.role == self.ROLE_MANAGER
+
+    @property
+    def can_oversee_operations(self):
+        return self.user.is_superuser or self.role == self.ROLE_MANAGER
+
+    @property
+    def can_manage_settings(self):
+        return self.user.is_superuser or self.role == self.ROLE_ADMIN

@@ -26,7 +26,16 @@ from .forms import (
     UserUpdateForm,
 )
 from .models import DistributionLine, IssueBatch, Item, Location, StockAdjustment, StockEntry, UserProfile
-from .permissions import get_user_profile, manager_required, stock_operator_required
+from .permissions import (
+    admin_required,
+    can_create_users,
+    can_manage_user_account,
+    get_effective_role_label,
+    get_user_profile,
+    get_role_choices_for_actor,
+    manager_required,
+    stock_operator_required,
+)
 from .services import (
     annotate_item_stock,
     build_stock_rows,
@@ -555,7 +564,7 @@ def stock_adjustment_create(request):
 
 
 @login_required
-@manager_required
+@admin_required
 def manage_items(request):
     items = Item.objects.all().order_by("name")
     editing_item = None
@@ -595,7 +604,7 @@ def manage_items(request):
 
 
 @login_required
-@manager_required
+@admin_required
 def manage_locations(request):
     locations = Location.objects.all().order_by("name")
     editing_location = None
@@ -633,20 +642,29 @@ def manage_locations(request):
 
 
 @login_required
-@manager_required
+@admin_required
 def manage_users(request):
-    can_assign_roles = request.user.is_superuser
-    can_create_users = request.user.is_superuser
-    create_form = UserCreateForm(prefix="create", acting_user=request.user) if can_create_users else None
+    role_choices = get_role_choices_for_actor(request.user)
+    user_creation_allowed = can_create_users(request.user)
+    create_form = (
+        UserCreateForm(prefix="create", acting_user=request.user, role_choices=role_choices)
+        if user_creation_allowed
+        else None
+    )
     target_user_id = None
     target_form = None
 
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create":
-            if not can_create_users:
+            if not user_creation_allowed:
                 raise PermissionDenied
-            create_form = UserCreateForm(request.POST, prefix="create", acting_user=request.user)
+            create_form = UserCreateForm(
+                request.POST,
+                prefix="create",
+                acting_user=request.user,
+                role_choices=role_choices,
+            )
             if create_form.is_valid():
                 user = create_form.save()
                 messages.success(request, f"Added user {user.username}.")
@@ -654,39 +672,32 @@ def manage_users(request):
                     "user_created",
                     user=request.user,
                     target_user=user.username,
-                    role=get_user_profile(user).role,
+                    role=get_effective_role_label(user),
                     active=user.is_active,
                 )
                 return redirect("manage_users")
         elif action == "update":
             target_user_id = request.POST.get("user_id")
             target_user = get_object_or_404(User, pk=target_user_id)
+            if not can_manage_user_account(request.user, target_user):
+                raise PermissionDenied
+            target_role_choices = get_role_choices_for_actor(request.user, target_user)
             target_form = UserUpdateForm(
                 request.POST,
                 instance=target_user,
                 prefix=f"user-{target_user.pk}",
                 acting_user=request.user,
+                role_choices=target_role_choices,
             )
             if target_form.is_valid():
                 new_role = (
                     target_form.cleaned_data["role"]
-                    if can_assign_roles
+                    if "role" in target_form.cleaned_data
                     else get_user_profile(target_user).role
                 )
                 new_active = target_form.cleaned_data["active"]
-                active_manager_count = UserProfile.objects.filter(
-                    role=UserProfile.ROLE_MANAGER,
-                    user__is_active=True,
-                ).count()
-
-                if target_user == request.user and (new_role != UserProfile.ROLE_MANAGER or not new_active):
-                    target_form.add_error(None, "You cannot remove your own manager access or deactivate yourself.")
-                elif (
-                    get_user_profile(target_user).is_manager
-                    and active_manager_count == 1
-                    and (new_role != UserProfile.ROLE_MANAGER or not new_active)
-                ):
-                    target_form.add_error(None, "At least one active manager must remain in the system.")
+                if target_user == request.user and not new_active:
+                    target_form.add_error(None, "You cannot deactivate your own account.")
                 else:
                     updated_user = target_form.save()
                     messages.success(request, f"Updated user {target_user.username}.")
@@ -694,7 +705,7 @@ def manage_users(request):
                         "user_updated",
                         user=request.user,
                         target_user=updated_user.username,
-                        role=get_user_profile(updated_user).role,
+                        role=get_effective_role_label(updated_user),
                         active=updated_user.is_active,
                         password_reset=bool(target_form.cleaned_data.get("new_password")),
                     )
@@ -702,17 +713,29 @@ def manage_users(request):
 
     user_rows = []
     for user in User.objects.select_related("profile").order_by("username"):
+        row_role_choices = get_role_choices_for_actor(request.user, user)
         form = (
             target_form
             if target_form is not None and str(user.pk) == str(target_user_id)
-            else UserUpdateForm(instance=user, prefix=f"user-{user.pk}", acting_user=request.user)
+            else UserUpdateForm(
+                instance=user,
+                prefix=f"user-{user.pk}",
+                acting_user=request.user,
+                role_choices=row_role_choices,
+            )
         )
-        user_rows.append({"user": user, "form": form})
+        user_rows.append({
+            "user": user,
+            "form": form,
+            "can_edit_role": "role" in form.fields,
+            "can_manage_account": can_manage_user_account(request.user, user),
+            "effective_role_label": get_effective_role_label(user),
+            "is_superadmin": user.is_superuser,
+        })
 
     return render(request, "inventory/manage_users.html", {
         "create_form": create_form,
-        "can_assign_roles": can_assign_roles,
-        "can_create_users": can_create_users,
+        "can_create_users": user_creation_allowed,
         "user_rows": user_rows,
     })
 

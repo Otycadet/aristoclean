@@ -85,7 +85,7 @@
   </table>
 </div>
 
-{% if not batch.is_voided and user.is_superuser or not batch.is_voided and user.profile.is_manager %}
+{% if not batch.is_voided and user.is_superuser or not batch.is_voided and user.profile.can_oversee_operations %}
 <div class="card no-print">
   <div class="card-title">Correction</div>
   <form method="post" action="{% url 'void_receipt' batch.receipt_number %}" id="voidReceiptForm">
@@ -98,7 +98,7 @@
   </form>
 </div>
 {% endif %}
-{% if not batch.is_voided and user.is_superuser or not batch.is_voided and user.profile.is_manager %}
+{% if not batch.is_voided and user.is_superuser or not batch.is_voided and user.profile.can_oversee_operations %}
 <script>
 document.getElementById('voidReceiptForm').addEventListener('submit', function (event) {
   const reasonField = this.querySelector('textarea, input[name="reason"]');

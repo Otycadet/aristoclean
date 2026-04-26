@@ -29,7 +29,7 @@ urlpatterns = [
     path("reports/", views.reports, name="reports"),
     path("reports/export/", views.export_report_csv, name="export_report_csv"),
 
-    # Management (manager only)
+    # Management (admin only)
     path("manage/items/", views.manage_items, name="manage_items"),
     path("manage/locations/", views.manage_locations, name="manage_locations"),
     path("manage/users/", views.manage_users, name="manage_users"),

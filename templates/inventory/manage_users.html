@@ -10,6 +10,7 @@
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;align-items:start;">
+  {% if can_create_users %}
   <div class="card">
     <div class="card-title">Add User</div>
     <form method="post">
@@ -28,12 +29,21 @@
       <button type="submit" class="btn btn-primary" style="width:100%">Create User</button>
     </form>
   </div>
+  {% else %}
+  <div class="card">
+    <div class="card-title">User Creation</div>
+    <div style="color:var(--muted);font-size:0.88rem;line-height:1.6;">
+      Only the superuser can create new user accounts or assign roles. Managers can still update profile details,
+      passwords, and sign-in status for existing users.
+    </div>
+  </div>
+  {% endif %}
 
   <div>
     <div class="card">
       <div class="card-title">Roles</div>
       <div style="color:var(--muted);font-size:0.82rem;font-family:'Helvetica Neue',Arial,sans-serif;">
-        Viewer can only see dashboard, stock, and receipts. Store Keeper can also receive and issue stock. Manager can also access reports and all management pages.
+        Viewer can only see dashboard, stock, and receipts. Store Keeper can also receive and issue stock. Manager can also access reports and management pages. Only the superuser can create users or change roles.
       </div>
     </div>
 
@@ -83,9 +93,13 @@
             {% if row.form.email.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.email.errors.0 }}</div>{% endif %}
           </div>
           <div class="form-group">
-            <label>{{ row.form.role.label }}</label>
-            {{ row.form.role }}
-            {% if row.form.role.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.role.errors.0 }}</div>{% endif %}
+            <label>Role</label>
+            {% if can_assign_roles and row.form.role %}
+              {{ row.form.role }}
+              {% if row.form.role.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.role.errors.0 }}</div>{% endif %}
+            {% else %}
+              <input type="text" value="{{ row.user.profile.get_role_display }}" readonly>
+            {% endif %}
           </div>
           <div class="form-group">
             <label>{{ row.form.new_password.label }}</label>

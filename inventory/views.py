@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q, Sum
@@ -634,14 +635,18 @@ def manage_locations(request):
 @login_required
 @manager_required
 def manage_users(request):
-    create_form = UserCreateForm(prefix="create")
+    can_assign_roles = request.user.is_superuser
+    can_create_users = request.user.is_superuser
+    create_form = UserCreateForm(prefix="create", acting_user=request.user) if can_create_users else None
     target_user_id = None
     target_form = None
 
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create":
-            create_form = UserCreateForm(request.POST, prefix="create")
+            if not can_create_users:
+                raise PermissionDenied
+            create_form = UserCreateForm(request.POST, prefix="create", acting_user=request.user)
             if create_form.is_valid():
                 user = create_form.save()
                 messages.success(request, f"Added user {user.username}.")
@@ -660,9 +665,14 @@ def manage_users(request):
                 request.POST,
                 instance=target_user,
                 prefix=f"user-{target_user.pk}",
+                acting_user=request.user,
             )
             if target_form.is_valid():
-                new_role = target_form.cleaned_data["role"]
+                new_role = (
+                    target_form.cleaned_data["role"]
+                    if can_assign_roles
+                    else get_user_profile(target_user).role
+                )
                 new_active = target_form.cleaned_data["active"]
                 active_manager_count = UserProfile.objects.filter(
                     role=UserProfile.ROLE_MANAGER,
@@ -695,12 +705,14 @@ def manage_users(request):
         form = (
             target_form
             if target_form is not None and str(user.pk) == str(target_user_id)
-            else UserUpdateForm(instance=user, prefix=f"user-{user.pk}")
+            else UserUpdateForm(instance=user, prefix=f"user-{user.pk}", acting_user=request.user)
         )
         user_rows.append({"user": user, "form": form})
 
     return render(request, "inventory/manage_users.html", {
         "create_form": create_form,
+        "can_assign_roles": can_assign_roles,
+        "can_create_users": can_create_users,
         "user_rows": user_rows,
     })
 

@@ -258,6 +258,58 @@ class InventoryTestCase(TestCase):
         response = manage_locations(request)
         self.assertEqual(response.status_code, 200)
 
+        request = self.factory.get("/manage/users/")
+        request.user = self.superuser
+        response = manage_users(request)
+        self.assertEqual(response.status_code, 200)
+
+    def test_manager_can_open_manage_users_but_cannot_create_user(self):
+        request = self.factory.get("/manage/users/")
+        request.user = self.manager
+        response = manage_users(request)
+        self.assertEqual(response.status_code, 200)
+
+        request = self.factory.post("/manage/users/", data={
+            "action": "create",
+            "create-username": "newuser",
+            "create-first_name": "New",
+            "create-last_name": "User",
+            "create-email": "new@example.com",
+            "create-role": UserProfile.ROLE_MANAGER,
+            "create-password1": "Pass1234!!",
+            "create-password2": "Pass1234!!",
+            "create-active": "on",
+        })
+        request.user = self.manager
+        self._attach_session_and_messages(request)
+
+        with self.assertRaises(PermissionDenied):
+            manage_users(request)
+
+        self.assertFalse(User.objects.filter(username="newuser").exists())
+
+    def test_manager_cannot_change_role_via_forged_post(self):
+        request = self.factory.post("/manage/users/", data={
+            "action": "update",
+            "user_id": str(self.storekeeper.pk),
+            f"user-{self.storekeeper.pk}-first_name": "Updated",
+            f"user-{self.storekeeper.pk}-last_name": "",
+            f"user-{self.storekeeper.pk}-email": "updated@example.com",
+            f"user-{self.storekeeper.pk}-role": UserProfile.ROLE_MANAGER,
+            f"user-{self.storekeeper.pk}-active": "on",
+            f"user-{self.storekeeper.pk}-new_password": "",
+        })
+        request.user = self.manager
+        self._attach_session_and_messages(request)
+
+        response = manage_users(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.storekeeper.refresh_from_db()
+        self.assertEqual(self.storekeeper.first_name, "Updated")
+        self.assertEqual(self.storekeeper.email, "updated@example.com")
+        self.assertEqual(self.storekeeper.profile.role, UserProfile.ROLE_STOREKEEPER)
+
     def test_superuser_can_edit_item_and_reorder_level(self):
         request = self.factory.post("/manage/items/", data={
             "item_id": str(self.item.pk),
@@ -302,7 +354,7 @@ class InventoryTestCase(TestCase):
             "password1": "password123",
             "password2": "password123",
             "active": "on",
-        })
+        }, acting_user=self.superuser)
 
         self.assertFalse(form.is_valid())
         self.assertIn("password1", form.errors)
@@ -315,7 +367,7 @@ class InventoryTestCase(TestCase):
             "role": UserProfile.ROLE_STOREKEEPER,
             "active": "on",
             "new_password": "password123",
-        }, instance=self.storekeeper)
+        }, instance=self.storekeeper, acting_user=self.superuser)
 
         self.assertFalse(form.is_valid())
         self.assertIn("new_password", form.errors)

@@ -178,6 +178,12 @@ class UserCreateForm(forms.ModelForm):
         model = User
         fields = ["username", "first_name", "last_name", "email"]
 
+    def __init__(self, *args, **kwargs):
+        self.acting_user = kwargs.pop("acting_user", None)
+        super().__init__(*args, **kwargs)
+        if not getattr(self.acting_user, "is_superuser", False):
+            self.fields.pop("role", None)
+
     def clean_username(self):
         username = self.cleaned_data["username"].strip()
         if User.objects.filter(username__iexact=username).exists():
@@ -216,7 +222,11 @@ class UserCreateForm(forms.ModelForm):
         if commit:
             user.save()
             profile, _ = UserProfile.objects.get_or_create(user=user)
-            profile.role = self.cleaned_data["role"]
+            profile.role = (
+                self.cleaned_data["role"]
+                if getattr(self.acting_user, "is_superuser", False)
+                else UserProfile.ROLE_STOREKEEPER
+            )
             profile.save()
         return user
 
@@ -235,9 +245,13 @@ class UserUpdateForm(forms.ModelForm):
         fields = ["first_name", "last_name", "email"]
 
     def __init__(self, *args, **kwargs):
+        self.acting_user = kwargs.pop("acting_user", None)
         super().__init__(*args, **kwargs)
         profile = getattr(self.instance, "profile", None)
-        self.fields["role"].initial = getattr(profile, "role", UserProfile.ROLE_STOREKEEPER)
+        if getattr(self.acting_user, "is_superuser", False):
+            self.fields["role"].initial = getattr(profile, "role", UserProfile.ROLE_STOREKEEPER)
+        else:
+            self.fields.pop("role", None)
         self.fields["active"].initial = self.instance.is_active
 
     def save(self, commit=True):
@@ -250,7 +264,8 @@ class UserUpdateForm(forms.ModelForm):
                 user.set_password(password)
                 user.save(update_fields=["password"])
             profile, _ = UserProfile.objects.get_or_create(user=user)
-            profile.role = self.cleaned_data["role"]
+            if getattr(self.acting_user, "is_superuser", False):
+                profile.role = self.cleaned_data["role"]
             profile.save()
         return user
 

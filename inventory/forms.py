@@ -103,6 +103,12 @@ class ReportFilterForm(forms.Form):
 
 class ReceiptFilterForm(forms.Form):
     q = forms.CharField(required=False, max_length=255, label="Search")
+    item = forms.ModelChoiceField(
+        queryset=Item.objects.none(),
+        required=False,
+        label="Item",
+        empty_label="All items",
+    )
     location = forms.ChoiceField(required=False)
     status = forms.ChoiceField(
         required=False,
@@ -125,6 +131,7 @@ class ReceiptFilterForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["item"].queryset = Item.objects.filter(active=True).order_by("name")
         self.fields["location"].choices = [("", "All locations")] + [
             (loc.name, loc.name)
             for loc in Location.objects.order_by("name")

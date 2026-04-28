@@ -272,9 +272,12 @@ def issue_stock(request):
 def receipts_list(request):
     form = ReceiptFilterForm(request.GET or None)
     batches = IssueBatch.objects.select_related("location", "voided_by").prefetch_related("lines__item")
+    selected_item = None
+    summary_filters = {}
 
     if form.is_valid():
         q = form.cleaned_data.get("q")
+        selected_item = form.cleaned_data.get("item")
         location = form.cleaned_data.get("location")
         status = form.cleaned_data.get("status")
         date_from = form.cleaned_data.get("date_from")
@@ -288,6 +291,8 @@ def receipts_list(request):
                 | Q(location__name__icontains=q)
                 | Q(lines__item__name__icontains=q)
             ).distinct()
+        if selected_item:
+            batches = batches.filter(lines__item=selected_item).distinct()
         if location:
             batches = batches.filter(location__name__iexact=location)
         if status == "active":
@@ -299,14 +304,51 @@ def receipts_list(request):
         if date_to:
             batches = batches.filter(issued_at__lte=date_to)
 
+        if status == "active":
+            summary_filters["batch__is_voided"] = False
+        elif status == "voided":
+            summary_filters["batch__is_voided"] = True
+        if date_from:
+            summary_filters["batch__issued_at__gte"] = date_from
+        if date_to:
+            summary_filters["batch__issued_at__lte"] = date_to
+
     ordered_batches = batches.order_by("-issued_at", "-id")
     summary_batches = ordered_batches
     paginator = Paginator(ordered_batches, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
+
+    item_disbursal_summary = None
+    if selected_item:
+        item_lines = DistributionLine.objects.filter(item=selected_item, **summary_filters).select_related("batch__location")
+        total_quantity = item_lines.aggregate(total=Sum("quantity"))["total"] or Decimal("0.00")
+        location_rows = list(
+            item_lines.values("batch__location__name")
+            .annotate(total=Sum("quantity"))
+            .order_by("batch__location__name")
+        )
+        item_disbursal_summary = {
+            "item": selected_item,
+            "total_quantity": total_quantity,
+            "location_count": len(location_rows),
+            "receipt_count": item_lines.values("batch_id").distinct().count(),
+            "locations": [
+                {
+                    "location": row["batch__location__name"],
+                    "quantity": row["total"],
+                }
+                for row in location_rows
+            ],
+            "status": form.cleaned_data.get("status") if form.is_valid() else "",
+            "date_from": form.cleaned_data.get("date_from") if form.is_valid() else None,
+            "date_to": form.cleaned_data.get("date_to") if form.is_valid() else None,
+        }
+
     return render(request, "inventory/receipts_list.html", {
         "form": form,
         "page_obj": page_obj,
         "batches": page_obj.object_list,
+        "item_disbursal_summary": item_disbursal_summary,
         "receipt_summary": {
             "total": summary_batches.count(),
             "active": summary_batches.filter(is_voided=False).count(),

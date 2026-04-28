@@ -46,6 +46,43 @@
     font-size: 0.78rem;
     line-height: 1.4;
   }
+
+  .location-breakdown {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.8rem;
+  }
+
+  .location-chip {
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+
+  .location-name {
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  .location-qty {
+    margin-top: 0.35rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary-caption {
+    margin-top: 0.4rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -63,6 +100,10 @@
     <div class="form-group" style="margin-bottom:0;">
       <label>{{ form.q.label }}</label>
       {{ form.q }}
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>{{ form.item.label }}</label>
+      {{ form.item }}
     </div>
     <div class="form-group" style="margin-bottom:0;">
       <label>{{ form.location.label }}</label>
@@ -86,6 +127,56 @@
     </div>
   </form>
 </div>
+
+{% if item_disbursal_summary %}
+<div class="card">
+  <div class="card-title">Item Disbursal Summary</div>
+  <div class="summary-grid" style="margin-bottom:0;">
+    <div class="summary-card">
+      <div class="summary-kicker">Item</div>
+      <div class="summary-value" style="font-size:1.15rem;">{{ item_disbursal_summary.item.name }}</div>
+      <div class="summary-note">{{ item_disbursal_summary.item.unit }}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-kicker">Total Disbursed</div>
+      <div class="summary-value">{{ item_disbursal_summary.total_quantity|floatformat:2 }}</div>
+      <div class="summary-note">Across all locations for the current status/date filters.</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-kicker">Locations Reached</div>
+      <div class="summary-value">{{ item_disbursal_summary.location_count }}</div>
+      <div class="summary-note">Distinct locations that received this item.</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-kicker">Receipts</div>
+      <div class="summary-value">{{ item_disbursal_summary.receipt_count }}</div>
+      <div class="summary-note">Receipts containing this item in the selected period/status.</div>
+    </div>
+  </div>
+  <div class="summary-caption">
+    {% if item_disbursal_summary.status == "active" %}
+    Showing active receipts only.
+    {% elif item_disbursal_summary.status == "voided" %}
+    Showing voided receipts only.
+    {% else %}
+    Showing active and voided receipts.
+    {% endif %}
+    {% if item_disbursal_summary.date_from or item_disbursal_summary.date_to %}
+    Date filter applied.
+    {% endif %}
+  </div>
+  {% if item_disbursal_summary.locations %}
+  <div class="location-breakdown">
+    {% for row in item_disbursal_summary.locations %}
+    <div class="location-chip">
+      <div class="location-name">{{ row.location }}</div>
+      <div class="location-qty">{{ row.quantity|floatformat:2 }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
 
 <div class="summary-grid">
   <div class="summary-card">

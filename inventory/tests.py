@@ -16,6 +16,7 @@ from .views import (
     manage_items,
     manage_locations,
     manage_users,
+    receipts_list,
     receipt_detail,
     reorder_list,
     reports,
@@ -210,6 +211,36 @@ class InventoryTestCase(TestCase):
         self.assertIn("Quantity Issued", content)
         self.assertIn("6.00", content)
         self.assertNotIn("Balance After Issue", content)
+
+    def test_receipts_list_shows_item_disbursal_summary_across_locations(self):
+        second_location = Location.objects.create(name="Branch Store")
+        first_batch = IssueBatch.objects.create(
+            location=self.location,
+            issued_to="Cleaning Team",
+            issued_by="Store Keeper",
+            issued_at=date(2026, 4, 22),
+            created_by=self.storekeeper,
+        )
+        second_batch = IssueBatch.objects.create(
+            location=second_location,
+            issued_to="Branch Team",
+            issued_by="Store Keeper",
+            issued_at=date(2026, 4, 23),
+            created_by=self.storekeeper,
+        )
+        DistributionLine.objects.create(batch=first_batch, item=self.item, quantity=Decimal("6.00"))
+        DistributionLine.objects.create(batch=second_batch, item=self.item, quantity=Decimal("4.00"))
+
+        request = self.factory.get("/receipts/", data={"item": str(self.item.pk), "status": "active"})
+        request.user = self.storekeeper
+        response = receipts_list(request)
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Item Disbursal Summary", content)
+        self.assertIn("10.00", content)
+        self.assertIn("Main Store", content)
+        self.assertIn("Branch Store", content)
 
     def test_stock_adjustment_cannot_make_stock_negative(self):
         request = self.factory.post("/stock/adjust/", data={

@@ -688,6 +688,9 @@ def manage_locations(request):
 def manage_users(request):
     role_choices = get_role_choices_for_actor(request.user)
     user_creation_allowed = can_create_users(request.user)
+    visible_users = User.objects.select_related("profile").order_by("username")
+    if not request.user.is_superuser:
+        visible_users = visible_users.exclude(is_superuser=True)
     create_form = (
         UserCreateForm(prefix="create", acting_user=request.user, role_choices=role_choices)
         if user_creation_allowed
@@ -754,7 +757,7 @@ def manage_users(request):
                     return redirect("manage_users")
 
     user_rows = []
-    for user in User.objects.select_related("profile").order_by("username"):
+    for user in visible_users:
         row_role_choices = get_role_choices_for_actor(request.user, user)
         form = (
             target_form

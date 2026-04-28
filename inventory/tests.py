@@ -352,6 +352,18 @@ class InventoryTestCase(TestCase):
         new_user = User.objects.get(username="newadmin")
         self.assertEqual(new_user.profile.role, UserProfile.ROLE_MANAGER)
 
+    def test_admin_cannot_see_superadmin_in_manage_users_list(self):
+        hidden_superuser = User.objects.create_superuser("chiefroot", "chief@example.com", "pass1234")
+        request = self.factory.get("/manage/users/")
+        request.user = self.admin
+
+        response = manage_users(request)
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("chiefroot", content)
+        self.assertNotIn(hidden_superuser.email, content)
+
     def test_admin_cannot_change_own_role(self):
         request = self.factory.post("/manage/users/", data={
             "action": "update",
@@ -396,6 +408,7 @@ class InventoryTestCase(TestCase):
         request = self.factory.post("/manage/users/", data={
             "action": "update",
             "user_id": str(self.manager.pk),
+            f"user-{self.manager.pk}-username": self.manager.username,
             f"user-{self.manager.pk}-first_name": self.manager.first_name,
             f"user-{self.manager.pk}-last_name": self.manager.last_name,
             f"user-{self.manager.pk}-email": self.manager.email,
@@ -411,6 +424,27 @@ class InventoryTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
         self.manager.refresh_from_db()
         self.assertEqual(self.manager.profile.role, UserProfile.ROLE_ADMIN)
+
+    def test_superuser_can_change_username(self):
+        request = self.factory.post("/manage/users/", data={
+            "action": "update",
+            "user_id": str(self.manager.pk),
+            f"user-{self.manager.pk}-username": "operationslead",
+            f"user-{self.manager.pk}-first_name": self.manager.first_name,
+            f"user-{self.manager.pk}-last_name": self.manager.last_name,
+            f"user-{self.manager.pk}-email": self.manager.email,
+            f"user-{self.manager.pk}-role": UserProfile.ROLE_MANAGER,
+            f"user-{self.manager.pk}-active": "on",
+            f"user-{self.manager.pk}-new_password": "",
+        })
+        request.user = self.superuser
+        self._attach_session_and_messages(request)
+
+        response = manage_users(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.manager.refresh_from_db()
+        self.assertEqual(self.manager.username, "operationslead")
 
     def test_manager_cannot_access_manage_users_or_create_user(self):
         request = self.factory.get("/manage/users/")
@@ -472,6 +506,28 @@ class InventoryTestCase(TestCase):
 
         with self.assertRaises(PermissionDenied):
             manage_users(request)
+
+    def test_admin_cannot_change_username_via_forged_post(self):
+        request = self.factory.post("/manage/users/", data={
+            "action": "update",
+            "user_id": str(self.manager.pk),
+            f"user-{self.manager.pk}-username": "renamedbyadmin",
+            f"user-{self.manager.pk}-first_name": "Managed",
+            f"user-{self.manager.pk}-last_name": "",
+            f"user-{self.manager.pk}-email": "managed@example.com",
+            f"user-{self.manager.pk}-role": UserProfile.ROLE_MANAGER,
+            f"user-{self.manager.pk}-active": "on",
+            f"user-{self.manager.pk}-new_password": "",
+        })
+        request.user = self.admin
+        self._attach_session_and_messages(request)
+
+        response = manage_users(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.manager.refresh_from_db()
+        self.assertEqual(self.manager.username, "manager")
+        self.assertEqual(self.manager.first_name, "Managed")
 
     def test_superuser_can_edit_item_and_reorder_level(self):
         request = self.factory.post("/manage/items/", data={

@@ -80,6 +80,13 @@
         <div class="alert alert-error">{{ row.form.non_field_errors.0 }}</div>
         {% endif %}
         <div class="form-row">
+          {% if row.form.username %}
+          <div class="form-group">
+            <label>{{ row.form.username.label }}</label>
+            {{ row.form.username }}
+            {% if row.form.username.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ row.form.username.errors.0 }}</div>{% endif %}
+          </div>
+          {% endif %}
           <div class="form-group">
             <label>{{ row.form.first_name.label }}</label>
             {{ row.form.first_name }}

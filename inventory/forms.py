@@ -242,6 +242,7 @@ class UserCreateForm(forms.ModelForm):
 
 
 class UserUpdateForm(forms.ModelForm):
+    username = forms.CharField(label="Username")
     role = forms.ChoiceField(choices=UserProfile.ROLE_CHOICES)
     active = forms.BooleanField(required=False, label="Can sign in")
     new_password = forms.CharField(
@@ -252,13 +253,15 @@ class UserUpdateForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "email"]
+        fields = ["username", "first_name", "last_name", "email"]
 
     def __init__(self, *args, **kwargs):
         self.acting_user = kwargs.pop("acting_user", None)
         role_choices = kwargs.pop("role_choices", None)
         super().__init__(*args, **kwargs)
         profile = getattr(self.instance, "profile", None)
+        if not getattr(self.acting_user, "is_superuser", False):
+            self.fields.pop("username", None)
         if role_choices is not None:
             self.fields["role"].choices = role_choices
         if "role" in self.fields and self.fields["role"].choices:
@@ -269,6 +272,8 @@ class UserUpdateForm(forms.ModelForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
+        if "username" in self.cleaned_data:
+            user.username = self.cleaned_data["username"].strip()
         user.is_active = self.cleaned_data["active"]
         password = self.cleaned_data.get("new_password")
         if commit:
@@ -288,3 +293,10 @@ class UserUpdateForm(forms.ModelForm):
             return password
         validate_password(password, user=self.instance)
         return password
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        queryset = User.objects.filter(username__iexact=username).exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise forms.ValidationError("A user with this username already exists.")
+        return username

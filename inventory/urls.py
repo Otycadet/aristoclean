@@ -33,6 +33,7 @@ urlpatterns = [
     path("manage/items/", views.manage_items, name="manage_items"),
     path("manage/locations/", views.manage_locations, name="manage_locations"),
     path("manage/users/", views.manage_users, name="manage_users"),
+    path("manage/sign-ins/", views.sign_in_logs, name="sign_in_logs"),
 
     # API helpers
     path("api/item-stock/<str:item_name>/",

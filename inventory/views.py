@@ -21,11 +21,12 @@ from .forms import (
     ReceiptFilterForm,
     ReceiptVoidForm,
     ReportFilterForm,
+    SignInLogFilterForm,
     StockAdjustmentForm,
     UserCreateForm,
     UserUpdateForm,
 )
-from .models import DistributionLine, IssueBatch, Item, Location, StockAdjustment, StockEntry, UserProfile
+from .models import DistributionLine, IssueBatch, Item, Location, SignInLog, StockAdjustment, StockEntry, UserProfile
 from .permissions import (
     admin_required,
     can_create_users,
@@ -782,6 +783,45 @@ def manage_users(request):
         "create_form": create_form,
         "can_create_users": user_creation_allowed,
         "user_rows": user_rows,
+    })
+
+
+@login_required
+@admin_required
+def sign_in_logs(request):
+    form = SignInLogFilterForm(request.GET or None)
+    logs = SignInLog.objects.select_related("user")
+
+    if form.is_valid():
+        q = (form.cleaned_data.get("q") or "").strip()
+        date_from = form.cleaned_data.get("date_from")
+        date_to = form.cleaned_data.get("date_to")
+
+        if q:
+            logs = logs.filter(
+                Q(username_snapshot__icontains=q)
+                | Q(user__username__icontains=q)
+                | Q(ip_address__icontains=q)
+                | Q(user_agent__icontains=q)
+            )
+        if date_from:
+            logs = logs.filter(signed_in_at__date__gte=date_from)
+        if date_to:
+            logs = logs.filter(signed_in_at__date__lte=date_to)
+
+    paginator = Paginator(logs.order_by("-signed_in_at", "-id"), 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    summary_logs = logs
+
+    return render(request, "inventory/sign_in_logs.html", {
+        "form": form,
+        "page_obj": page_obj,
+        "logs": page_obj.object_list,
+        "log_summary": {
+            "total": summary_logs.count(),
+            "today": summary_logs.filter(signed_in_at__date=timezone.localdate()).count(),
+            "unique_users": summary_logs.values("username_snapshot").distinct().count(),
+        },
     })
 
 

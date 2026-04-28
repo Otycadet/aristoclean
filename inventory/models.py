@@ -158,6 +158,26 @@ class StockAdjustment(models.Model):
         return f"{self.item.name} {self.quantity_delta:+} ({self.get_reason_display()})"
 
 
+class SignInLog(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sign_in_logs",
+    )
+    username_snapshot = models.CharField(max_length=150)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+    signed_in_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-signed_in_at", "-id"]
+
+    def __str__(self):
+        return f"{self.username_snapshot} signed in at {self.signed_in_at:%Y-%m-%d %H:%M:%S}"
+
+
 class UserProfile(models.Model):
     ROLE_VIEWER = "viewer"
     ROLE_STOREKEEPER = "storekeeper"

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Sign-in Logs - Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+  .page-copy {
+    margin: -0.65rem 0 1.1rem;
+    max-width: 780px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .summary-card {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, #fff 0%, #fcfbf8 100%);
+  }
+
+  .summary-kicker {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  .summary-value {
+    margin-top: 0.35rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary-note {
+    margin-top: 0.3rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .user-agent {
+    max-width: 360px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Sign-in Logs</h1>
+  <div style="display:flex;gap:0.75rem;">
+    <a href="{% url 'manage_items' %}" class="btn btn-secondary btn-sm">Items</a>
+    <a href="{% url 'manage_locations' %}" class="btn btn-secondary btn-sm">Locations</a>
+    <a href="{% url 'manage_users' %}" class="btn btn-secondary btn-sm">Users</a>
+  </div>
+</div>
+<p class="page-copy">Review successful sign-ins across the system, including who logged in, when they signed in, and the IP or browser details captured at the time.</p>
+
+<div class="card">
+  <div class="card-title">Filter</div>
+  <form method="get" class="form-row" style="align-items:end;">
+    <div class="form-group" style="margin-bottom:0;">
+      <label>{{ form.q.label }}</label>
+      {{ form.q }}
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>{{ form.date_from.label }}</label>
+      {{ form.date_from }}
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>{{ form.date_to.label }}</label>
+      {{ form.date_to }}
+    </div>
+    <div class="toolbar">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      <a href="{% url 'sign_in_logs' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-kicker">Matching Sign-ins</div>
+    <div class="summary-value">{{ log_summary.total }}</div>
+    <div class="summary-note">Total successful sign-ins in the current filtered view.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Today</div>
+    <div class="summary-value">{{ log_summary.today }}</div>
+    <div class="summary-note">Successful sign-ins captured today.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Distinct Users</div>
+    <div class="summary-value">{{ log_summary.unique_users }}</div>
+    <div class="summary-note">Unique usernames represented in the current view.</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Signed In At</th>
+          <th>IP Address</th>
+          <th>User Agent</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td><strong>{{ log.username_snapshot }}</strong></td>
+          <td>{{ log.signed_in_at|date:"Y-m-d H:i:s" }}</td>
+          <td>{{ log.ip_address|default:"-" }}</td>
+          <td><div class="user-agent">{{ log.user_agent|default:"-" }}</div></td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" style="text-align:center;padding:2.5rem;color:var(--muted)">No sign-in logs found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj and page_obj.paginator.num_pages > 1 %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+    <a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

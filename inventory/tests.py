@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
+from django.contrib.auth.signals import user_logged_in
 from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.middleware import SessionMiddleware
@@ -8,7 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase, override_settings
 
 from .forms import UserCreateForm, UserUpdateForm
-from .models import DistributionLine, IssueBatch, Item, Location, StockAdjustment, StockEntry, UserProfile
+from .models import DistributionLine, IssueBatch, Item, Location, SignInLog, StockAdjustment, StockEntry, UserProfile
 from .views import (
     export_csv,
     issue_stock,
@@ -20,6 +21,7 @@ from .views import (
     receipt_detail,
     reorder_list,
     reports,
+    sign_in_logs,
     stock_adjustment_create,
     stock_receive,
     void_receipt,
@@ -241,6 +243,34 @@ class InventoryTestCase(TestCase):
         self.assertIn("10.00", content)
         self.assertIn("Main Store", content)
         self.assertIn("Branch Store", content)
+
+    def test_successful_sign_in_creates_log_entry(self):
+        request = self.factory.get("/accounts/login/", HTTP_USER_AGENT="InventoryBrowser/1.0", REMOTE_ADDR="127.0.0.1")
+        request.user = self.storekeeper
+
+        user_logged_in.send(sender=self.storekeeper.__class__, request=request, user=self.storekeeper)
+
+        log = SignInLog.objects.get(user=self.storekeeper)
+        self.assertEqual(log.username_snapshot, self.storekeeper.username)
+        self.assertEqual(log.ip_address, "127.0.0.1")
+        self.assertEqual(log.user_agent, "InventoryBrowser/1.0")
+
+    def test_admin_can_open_sign_in_logs(self):
+        SignInLog.objects.create(user=self.storekeeper, username_snapshot=self.storekeeper.username)
+        request = self.factory.get("/manage/sign-ins/")
+        request.user = self.admin
+
+        response = sign_in_logs(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Sign-in Logs", response.content.decode())
+
+    def test_manager_cannot_open_sign_in_logs(self):
+        request = self.factory.get("/manage/sign-ins/")
+        request.user = self.manager
+
+        with self.assertRaises(PermissionDenied):
+            sign_in_logs(request)
 
     def test_stock_adjustment_cannot_make_stock_negative(self):
         request = self.factory.post("/stock/adjust/", data={

@@ -138,6 +138,20 @@ class ReceiptFilterForm(forms.Form):
         ]
 
 
+class SignInLogFilterForm(forms.Form):
+    q = forms.CharField(required=False, max_length=255, label="Search user or IP")
+    date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="From",
+    )
+    date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="To",
+    )
+
+
 class StockAdjustmentForm(forms.ModelForm):
     DIRECTION_INCREASE = "increase"
     DIRECTION_DECREASE = "decrease"

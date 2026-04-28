@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import DistributionLine, IssueBatch, Item, Location, StockAdjustment, StockEntry, UserProfile
+from .models import DistributionLine, IssueBatch, Item, Location, SignInLog, StockAdjustment, StockEntry, UserProfile
 
 
 @admin.register(UserProfile)
@@ -35,6 +35,13 @@ class StockAdjustmentAdmin(admin.ModelAdmin):
     list_display = ["item", "quantity_delta", "reason", "adjusted_at", "created_by"]
     list_filter = ["reason", "adjusted_at"]
     search_fields = ["item__name", "notes"]
+
+
+@admin.register(SignInLog)
+class SignInLogAdmin(admin.ModelAdmin):
+    list_display = ["username_snapshot", "ip_address", "signed_in_at"]
+    list_filter = ["signed_in_at"]
+    search_fields = ["username_snapshot", "user__username", "ip_address", "user_agent"]
 
 
 class DistributionLineInline(admin.TabularInline):

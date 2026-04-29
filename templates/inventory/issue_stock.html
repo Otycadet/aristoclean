@@ -348,7 +348,7 @@ function addLine(itemId = '', qty = '') {
 
       <div class="line-field qty-field">
         <label for="issue_qty_${idx}">Qty to Issue</label>
-        <input type="number" name="issue_qty_${idx}" id="issue_qty_${idx}" value="${escapeHtml(qty)}" min="0.01" step="0.01" placeholder="0.00" oninput="updateLineState(${idx})">
+        <input type="number" name="issue_qty_${idx}" id="issue_qty_${idx}" value="${escapeHtml(qty)}" min="1" step="1" placeholder="0" oninput="updateLineState(${idx})">
       </div>
 
       <div class="metric-panel" id="stock_panel_${idx}">

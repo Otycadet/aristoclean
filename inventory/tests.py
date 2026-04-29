@@ -168,6 +168,23 @@ class InventoryTestCase(TestCase):
         self.assertIn(b"Only 20.00 pcs of Soap available.", response.content)
         self.assertEqual(IssueBatch.objects.count(), 0)
 
+    def test_issue_rejects_decimal_quantity(self):
+        request = self.factory.post("/issue/", data={
+            "location": self.location.pk,
+            "issued_to": "Team A",
+            "issued_by": "Store Keeper",
+            "issued_at": "2026-04-22",
+            "notes": "",
+            "issue_item_0": str(self.item.pk),
+            "issue_qty_0": "2.50",
+        })
+        request.user = self.storekeeper
+
+        response = issue_stock(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Enter a whole number for quantity for Soap.", response.content)
+
     def test_manager_can_void_receipt_and_restore_stock(self):
         batch = IssueBatch.objects.create(
             location=self.location,
@@ -321,6 +338,25 @@ class InventoryTestCase(TestCase):
         self.assertEqual(Item.objects.count(), 1)
         self.assertEqual(self.item.reorder_level, Decimal("12.00"))
         self.assertEqual(self.item.current_stock, Decimal("25.00"))
+
+    def test_stock_receive_rejects_decimal_quantity(self):
+        request = self.factory.post("/stock/receive/", data={
+            "supplier": "Local Supplier",
+            "reference": "PO-100",
+            "notes": "",
+            "received_at": "2026-04-22",
+            "line_item_0": str(self.item.pk),
+            "line_new_item_0": "",
+            "line_unit_0": "pcs",
+            "line_reorder_0": "12.00",
+            "line_qty_0": "5.50",
+        })
+        request.user = self.storekeeper
+
+        response = stock_receive(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Enter a whole number for quantity for Soap.", response.content)
 
     def test_stock_receive_can_create_new_item_from_typed_name(self):
         request = self.factory.post("/stock/receive/", data={

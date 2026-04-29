@@ -71,6 +71,13 @@ def decimal_from_post(value, field_name):
     return parsed.quantize(Decimal("0.01"))
 
 
+def whole_number_from_post(value, field_name):
+    parsed = decimal_from_post(value, field_name)
+    if parsed != parsed.to_integral_value():
+        raise ValueError(f"Enter a whole number for {field_name}.")
+    return parsed
+
+
 def serialize_items_for_js(items_queryset):
     return [
         {
@@ -189,7 +196,7 @@ def parse_delivery_lines(post_data):
             "item_name": item_name,
             "unit": unit,
             "reorder_level": reorder_value,
-            "quantity": decimal_from_post(qty, f"quantity for {item_name}"),
+            "quantity": whole_number_from_post(qty, f"quantity for {item_name}"),
         })
 
     return lines if lines else None
@@ -256,7 +263,7 @@ def parse_issue_lines(post_data):
             item = Item.objects.get(pk=int(item_id), active=True)
         except (Item.DoesNotExist, ValueError):
             raise ValueError("Select valid items from the list of active stock items.")
-        lines.append({"item": item, "quantity": decimal_from_post(qty, f"quantity for {item.name}")})
+        lines.append({"item": item, "quantity": whole_number_from_post(qty, f"quantity for {item.name}")})
     return lines if lines else None
 
 

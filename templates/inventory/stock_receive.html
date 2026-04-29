@@ -347,7 +347,7 @@ function addLine(itemId = '', name = '', unit = '', reorder = 0, qty = '') {
 
       <div class="line-field qty-field">
         <label for="qty_${idx}">Qty Received</label>
-        <input type="number" name="line_qty_${idx}" id="qty_${idx}" value="${qty}" min="0.01" step="0.01" placeholder="0.00">
+        <input type="number" name="line_qty_${idx}" id="qty_${idx}" value="${qty}" min="1" step="1" placeholder="0">
       </div>
     </div>
   `;

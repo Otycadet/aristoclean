@@ -207,6 +207,103 @@
     text-align: center;
   }
 
+  .receipt-preview-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(31, 35, 40, 0.5);
+  }
+
+  .receipt-preview-backdrop[hidden] {
+    display: none;
+  }
+
+  .receipt-preview {
+    width: min(720px, 100%);
+    max-height: min(780px, calc(100vh - 2rem));
+    overflow: auto;
+    border-radius: var(--radius);
+    background: #fff;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
+  }
+
+  .receipt-preview-head,
+  .receipt-preview-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .receipt-preview-actions {
+    justify-content: flex-end;
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+  }
+
+  .receipt-preview-body {
+    padding: 1.2rem;
+  }
+
+  .preview-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .preview-summary-item {
+    padding: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+
+  .preview-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  .preview-value {
+    margin-top: 0.3rem;
+    font-weight: 700;
+  }
+
+  .preview-warning {
+    margin-bottom: 1rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid rgba(160, 63, 52, 0.24);
+    border-radius: var(--radius);
+    background: var(--danger-light);
+    color: var(--danger);
+    font-size: 0.85rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .preview-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1.35rem;
+    line-height: 1;
+    padding: 0.2rem 0.35rem;
+  }
+
+  .preview-close:hover {
+    color: var(--danger);
+  }
+
   @media (max-width: 980px) {
     .line-card-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -297,6 +394,55 @@
   </div>
 </form>
 
+<div class="receipt-preview-backdrop" id="receiptPreviewModal" hidden>
+  <div class="receipt-preview" role="dialog" aria-modal="true" aria-labelledby="receiptPreviewTitle">
+    <div class="receipt-preview-head">
+      <div>
+        <div class="card-title" id="receiptPreviewTitle">Review Issue Receipt</div>
+        <div class="field-hint">Confirm these details before the receipt is generated.</div>
+      </div>
+      <button type="button" class="preview-close" onclick="closeReceiptPreview()" aria-label="Close preview">&times;</button>
+    </div>
+    <div class="receipt-preview-body">
+      <div id="receiptPreviewWarning" class="preview-warning" hidden></div>
+      <div class="preview-summary">
+        <div class="preview-summary-item">
+          <div class="preview-label">Location</div>
+          <div class="preview-value" id="previewLocation">-</div>
+        </div>
+        <div class="preview-summary-item">
+          <div class="preview-label">Issued To</div>
+          <div class="preview-value" id="previewIssuedTo">-</div>
+        </div>
+        <div class="preview-summary-item">
+          <div class="preview-label">Issued By</div>
+          <div class="preview-value" id="previewIssuedBy">-</div>
+        </div>
+        <div class="preview-summary-item">
+          <div class="preview-label">Date</div>
+          <div class="preview-value" id="previewIssuedAt">-</div>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Unit</th>
+            <th style="text-align:right">Quantity</th>
+            <th style="text-align:right">Available</th>
+            <th style="text-align:right">After Issue</th>
+          </tr>
+        </thead>
+        <tbody id="receiptPreviewLines"></tbody>
+      </table>
+    </div>
+    <div class="receipt-preview-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeReceiptPreview()">Edit Lines</button>
+      <button type="button" class="btn btn-primary" id="confirmReceiptButton" onclick="confirmReceiptPreview()">Generate Receipt</button>
+    </div>
+  </div>
+</div>
+
 {{ items_data|json_script:"issue-stock-items" }}
 {{ issue_lines_data|json_script:"issue-lines-data" }}
 <script>
@@ -306,6 +452,7 @@ const ITEM_MAP = {};
 ITEMS.forEach(item => { ITEM_MAP[item.id] = item; });
 const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
 let lineCount = 0;
+let receiptPreviewConfirmed = false;
 
 function escapeHtml(value) {
   return String(value)
@@ -461,6 +608,129 @@ function updateLineState(idx) {
     projectedNote.textContent = 'Projected balance stays above the reorder threshold.';
   }
 }
+
+function selectedOptionText(select) {
+  if (!select || select.selectedIndex < 0) {
+    return '-';
+  }
+  return select.options[select.selectedIndex].textContent.trim() || '-';
+}
+
+function getReceiptPreviewData() {
+  const rows = [];
+  let incompleteLineCount = 0;
+
+  document.querySelectorAll('.line-card').forEach(card => {
+    const itemSelect = card.querySelector('select[name^="issue_item_"]');
+    const qtyInput = card.querySelector('input[name^="issue_qty_"]');
+    const itemId = itemSelect ? itemSelect.value : '';
+    const qtyRaw = qtyInput ? qtyInput.value.trim() : '';
+
+    if (!itemId && !qtyRaw) {
+      return;
+    }
+
+    if (!itemId || !qtyRaw) {
+      incompleteLineCount += 1;
+      return;
+    }
+
+    const item = ITEM_MAP[itemId];
+    const qty = Number(qtyRaw);
+    if (!item || !Number.isFinite(qty) || qty <= 0) {
+      incompleteLineCount += 1;
+      return;
+    }
+
+    const stock = Number(item.stock || 0);
+    rows.push({
+      name: item.name,
+      unit: item.unit,
+      quantity: qty,
+      stock,
+      projected: stock - qty,
+    });
+  });
+
+  return { rows, incompleteLineCount };
+}
+
+function renderReceiptPreview() {
+  const form = document.getElementById('issueForm');
+  const locationSelect = form.querySelector('[name="location"]');
+  const issuedTo = form.querySelector('[name="issued_to"]');
+  const issuedAt = form.querySelector('[name="issued_at"]');
+  const preview = getReceiptPreviewData();
+  const lineBody = document.getElementById('receiptPreviewLines');
+  const warning = document.getElementById('receiptPreviewWarning');
+  const confirmButton = document.getElementById('confirmReceiptButton');
+
+  document.getElementById('previewLocation').textContent = selectedOptionText(locationSelect);
+  document.getElementById('previewIssuedTo').textContent = issuedTo && issuedTo.value.trim() ? issuedTo.value.trim() : '-';
+  document.getElementById('previewIssuedBy').textContent = '{{ issued_by_name|escapejs }}';
+  document.getElementById('previewIssuedAt').textContent = issuedAt && issuedAt.value ? issuedAt.value : '-';
+
+  if (preview.rows.length) {
+    lineBody.innerHTML = preview.rows.map(line => `
+      <tr>
+        <td><strong>${escapeHtml(line.name)}</strong></td>
+        <td style="color:var(--muted)">${escapeHtml(line.unit)}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">${formatNumber(line.quantity)}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums">${formatNumber(line.stock)}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums">${formatNumber(line.projected)}</td>
+      </tr>
+    `).join('');
+  } else {
+    lineBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1rem">No complete issue lines yet.</td></tr>';
+  }
+
+  const messages = [];
+  if (!locationSelect || !locationSelect.value) {
+    messages.push('Select a location.');
+  }
+  if (!preview.rows.length) {
+    messages.push('Add at least one complete issue line.');
+  }
+  if (preview.incompleteLineCount) {
+    messages.push('Complete or remove partially filled issue lines.');
+  }
+
+  warning.textContent = messages.join(' ');
+  warning.hidden = messages.length === 0;
+  confirmButton.disabled = messages.length > 0;
+
+  document.getElementById('receiptPreviewModal').hidden = false;
+}
+
+function closeReceiptPreview() {
+  document.getElementById('receiptPreviewModal').hidden = true;
+}
+
+function confirmReceiptPreview() {
+  receiptPreviewConfirmed = true;
+  closeReceiptPreview();
+  document.getElementById('issueForm').requestSubmit();
+}
+
+document.getElementById('issueForm').addEventListener('submit', function (event) {
+  if (receiptPreviewConfirmed) {
+    return;
+  }
+  event.preventDefault();
+  renderReceiptPreview();
+});
+
+document.getElementById('receiptPreviewModal').addEventListener('click', function (event) {
+  if (event.target === this) {
+    closeReceiptPreview();
+  }
+});
+
+document.addEventListener('keydown', function (event) {
+  if (event.key === 'Escape') {
+    closeReceiptPreview();
+  }
+});
 
 window.addEventListener('DOMContentLoaded', () => {
   if (PRESET_LINES.length) {

@@ -37,9 +37,6 @@
       display: flex;
       flex-direction: column;
     }
-    body.nav-collapsed {
-      --sidebar-width: 92px;
-    }
     nav {
       background: linear-gradient(180deg, #155f3a 0%, #104b2f 100%);
       color: #fff;
@@ -64,20 +61,6 @@
       white-space: nowrap;
     }
     .nav-brand span { font-weight: 300; opacity: 0.8; font-size: 0.8rem; display: block; }
-    .nav-toggle {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      width: 38px;
-      height: 38px;
-      border: 1px solid rgba(255,255,255,0.22);
-      border-radius: var(--radius);
-      background: rgba(255,255,255,0.08);
-      color: #fff;
-      cursor: pointer;
-      font-size: 1.15rem;
-      line-height: 1;
-    }
     nav a {
       color: rgba(255,255,255,0.85);
       text-decoration: none;
@@ -202,6 +185,7 @@
       box-shadow: var(--shadow);
       padding: 1.35rem;
       margin-bottom: 1.25rem;
+      max-width: 100%;
     }
     .card-title {
       font-size: 0.68rem;
@@ -215,6 +199,7 @@
     .table-wrap { overflow-x: auto; }
     .table-wrap {
       -webkit-overflow-scrolling: touch;
+      max-width: 100%;
     }
     table {
       width: 100%;
@@ -395,12 +380,6 @@
         box-shadow: 12px 0 30px rgba(16, 75, 47, 0.16);
         transition: width 0.18s ease;
       }
-      .nav-toggle {
-        display: inline-flex;
-        align-self: center;
-        margin-bottom: 0.65rem;
-      }
-
       .nav-brand {
         padding: 0.65rem 0.75rem 1.15rem;
         margin: 0 0 0.8rem;
@@ -420,83 +399,6 @@
         padding: 0.78rem 0.85rem;
         color: rgba(255,255,255,0.76);
         letter-spacing: 0.08em;
-      }
-      body.nav-collapsed .nav-brand {
-        padding: 0.55rem 0 0.9rem;
-        text-align: center;
-        font-size: 0;
-      }
-      body.nav-collapsed .nav-brand::before {
-        content: "A";
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border: 1px solid rgba(255,255,255,0.24);
-        border-radius: var(--radius);
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: 1.25rem;
-        color: #fff;
-        background: rgba(255,255,255,0.1);
-      }
-      body.nav-collapsed .nav-brand span,
-      body.nav-collapsed .nav-user,
-      body.nav-collapsed .nav-logout-form {
-        display: none;
-      }
-      body.nav-collapsed nav a,
-      body.nav-collapsed .nav-group summary {
-        min-height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.55rem 0.25rem;
-        font-size: 0.66rem;
-        letter-spacing: 0.02em;
-        line-height: 1.05;
-        text-align: center;
-        text-transform: none;
-      }
-      body.nav-collapsed .nav-group summary::after {
-        content: "";
-        margin: 0;
-      }
-      body.nav-collapsed .nav-group {
-        position: relative;
-      }
-      body.nav-collapsed .nav-submenu {
-        display: none;
-      }
-      body.nav-collapsed .nav-group:hover .nav-submenu,
-      body.nav-collapsed .nav-group:focus-within .nav-submenu {
-        display: flex;
-        position: absolute;
-        left: calc(100% + 0.55rem);
-        top: 0;
-        min-width: 220px;
-        margin: 0;
-        padding: 0.35rem;
-        background: #fff;
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow-md);
-        border-radius: var(--radius);
-      }
-      body.nav-collapsed .nav-group:hover .nav-submenu a,
-      body.nav-collapsed .nav-group:focus-within .nav-submenu a {
-        color: var(--text);
-        justify-content: flex-start;
-        min-height: 36px;
-        padding: 0.65rem 0.75rem;
-        font-size: 0.84rem;
-        text-align: left;
-      }
-      body.nav-collapsed .nav-group:hover .nav-submenu a:hover,
-      body.nav-collapsed .nav-group:hover .nav-submenu a.active,
-      body.nav-collapsed .nav-group:focus-within .nav-submenu a:hover,
-      body.nav-collapsed .nav-group:focus-within .nav-submenu a.active {
-        color: var(--accent);
-        background: var(--accent-light);
       }
       .nav-group {
         position: static;
@@ -582,8 +484,9 @@
       main {
         max-width: none;
         margin-left: var(--sidebar-width);
-        padding: 2.4rem clamp(1.5rem, 3vw, 3.2rem) 3.2rem;
-        transition: margin-left 0.18s ease;
+        width: calc(100% - var(--sidebar-width));
+        padding: 2rem clamp(1rem, 2vw, 2rem) 2.5rem;
+        overflow-x: hidden;
       }
 
       main > .alert,
@@ -594,7 +497,7 @@
       main > .stats-grid,
       main > .mobile-stack,
       main > div:not(.alert):not(.page-header):not(.page-copy):not(.card):not(.summary-grid):not(.stats-grid):not(.mobile-stack) {
-        max-width: 1440px;
+        max-width: 1280px;
         margin-left: auto;
         margin-right: auto;
       }
@@ -608,10 +511,6 @@
       body {
         min-width: 0;
       }
-      body.nav-collapsed {
-        --sidebar-width: 248px;
-      }
-
       nav {
         flex-wrap: wrap;
         gap: 0.15rem;
@@ -619,27 +518,6 @@
         padding: 0 0.75rem;
         -webkit-overflow-scrolling: touch;
       }
-      .nav-toggle {
-        display: inline-flex;
-        flex: 0 0 auto;
-        min-width: 38px;
-        order: 1;
-        margin: 0.45rem 0.5rem 0.45rem 0;
-      }
-      body.nav-collapsed nav a,
-      body.nav-collapsed .nav-group summary {
-        display: none;
-      }
-      body.nav-collapsed .nav-group[open] .nav-submenu {
-        display: none;
-      }
-      body.nav-collapsed .nav-brand {
-        font-size: 1.2rem;
-      }
-      body.nav-collapsed .nav-brand::before {
-        content: none;
-      }
-
       .nav-brand {
         position: sticky;
         left: 0;
@@ -813,7 +691,6 @@
 <body>
 {% if user.is_authenticated %}
 <nav>
-  <button type="button" class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="true">☰</button>
   <div class="nav-brand">
     Aristoclean
     <span>Inventory Manager</span>
@@ -873,25 +750,5 @@
 
   {% block content %}{% endblock %}
 </main>
-<script>
-  (function () {
-    const toggle = document.getElementById('navToggle');
-    if (!toggle) {
-      return;
-    }
-
-    const stored = window.localStorage.getItem('aristoclean-nav-collapsed');
-    if (stored === '1') {
-      document.body.classList.add('nav-collapsed');
-      toggle.setAttribute('aria-expanded', 'false');
-    }
-
-    toggle.addEventListener('click', function () {
-      const collapsed = document.body.classList.toggle('nav-collapsed');
-      toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-      window.localStorage.setItem('aristoclean-nav-collapsed', collapsed ? '1' : '0');
-    });
-  })();
-</script>
 </body>
 </html>

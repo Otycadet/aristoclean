@@ -62,7 +62,24 @@ class ItemForm(forms.ModelForm):
 
     class Meta:
         model = Item
-        fields = ["name", "unit", "reorder_level", "active"]
+        fields = ["name", "unit", "pack_size", "carton_size", "reorder_level", "active"]
+        labels = {
+            "unit": "Base unit",
+            "pack_size": "Pieces / base units in one pack",
+            "carton_size": "Pieces / base units in one carton",
+        }
+
+    def clean_pack_size(self):
+        value = self.cleaned_data.get("pack_size")
+        if value is not None and value <= 0:
+            raise forms.ValidationError("Pack size must be greater than 0.")
+        return value
+
+    def clean_carton_size(self):
+        value = self.cleaned_data.get("carton_size")
+        if value is not None and value <= 0:
+            raise forms.ValidationError("Carton size must be greater than 0.")
+        return value
 
 
 class LocationForm(forms.ModelForm):

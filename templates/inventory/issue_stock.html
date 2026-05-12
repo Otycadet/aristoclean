@@ -94,7 +94,7 @@
 
   .line-card-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.8fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) repeat(2, minmax(150px, 1fr));
+    grid-template-columns: minmax(0, 1.8fr) minmax(130px, 0.8fr) minmax(130px, 0.8fr) minmax(130px, 0.8fr) repeat(2, minmax(150px, 1fr));
     gap: 0.9rem 1rem;
     align-items: start;
   }
@@ -467,7 +467,7 @@ function formatNumber(value) {
   return Number(value || 0).toFixed(2);
 }
 
-function addLine(itemId = '', qty = '') {
+function addLine(itemId = '', qty = '', measure = 'base') {
   const idx = lineCount++;
   const container = document.getElementById('lineBody');
   const card = document.createElement('div');
@@ -493,6 +493,14 @@ function addLine(itemId = '', qty = '') {
         <input type="text" id="issue_unit_${idx}" readonly placeholder="Unit">
       </div>
 
+      <div class="line-field">
+        <label for="issue_measure_${idx}">Qty In</label>
+        <select name="issue_measure_${idx}" id="issue_measure_${idx}" onchange="updateLineState(${idx})">
+          <option value="base">Base unit</option>
+        </select>
+        <div class="field-hint" id="issue_measure_hint_${idx}">Choose an item to see pack/carton options.</div>
+      </div>
+
       <div class="line-field qty-field">
         <label for="issue_qty_${idx}">Qty to Issue</label>
         <input type="number" name="issue_qty_${idx}" id="issue_qty_${idx}" value="${escapeHtml(qty)}" min="1" step="1" placeholder="0" oninput="updateLineState(${idx})">
@@ -515,10 +523,52 @@ function addLine(itemId = '', qty = '') {
 
   if (itemId) {
     document.getElementById(`issue_item_${idx}`).value = itemId;
+    setIssueMeasureOptions(idx, ITEM_MAP[itemId]);
+    document.getElementById(`issue_measure_${idx}`).value = measure || 'base';
   }
 
   updateLineState(idx);
   refreshLineMeta();
+}
+
+function formatPlain(value) {
+  return Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function setIssueMeasureOptions(idx, item) {
+  const measureSelect = document.getElementById(`issue_measure_${idx}`);
+  const hint = document.getElementById(`issue_measure_hint_${idx}`);
+  const current = measureSelect.value || 'base';
+
+  if (!item) {
+    measureSelect.innerHTML = '<option value="base">Base unit</option>';
+    hint.textContent = 'Choose an item to see pack/carton options.';
+    return;
+  }
+
+  const options = [`<option value="base">${escapeHtml(item.unit)}</option>`];
+  if (item.pack_size) {
+    options.push(`<option value="pack">Packs (${formatPlain(item.pack_size)} ${escapeHtml(item.unit)})</option>`);
+  }
+  if (item.carton_size) {
+    options.push(`<option value="carton">Cartons (${formatPlain(item.carton_size)} ${escapeHtml(item.unit)})</option>`);
+  }
+  measureSelect.innerHTML = options.join('');
+  measureSelect.value = Array.from(measureSelect.options).some(option => option.value === current) ? current : 'base';
+  hint.textContent = item.pack_size || item.carton_size ? 'Quantity will be converted into the base unit for stock.' : 'No pack/carton sizes set for this item.';
+}
+
+function quantityMultiplier(item, measure) {
+  if (!item) {
+    return 1;
+  }
+  if (measure === 'pack' && item.pack_size) {
+    return Number(item.pack_size);
+  }
+  if (measure === 'carton' && item.carton_size) {
+    return Number(item.carton_size);
+  }
+  return 1;
 }
 
 function removeLine(idx) {
@@ -546,6 +596,7 @@ function refreshLineMeta() {
 function updateLineState(idx) {
   const itemId = document.getElementById(`issue_item_${idx}`).value;
   const qtyValue = parseFloat(document.getElementById(`issue_qty_${idx}`).value || '0');
+  const measureValue = document.getElementById(`issue_measure_${idx}`).value || 'base';
   const unitField = document.getElementById(`issue_unit_${idx}`);
   const stockPanel = document.getElementById(`stock_panel_${idx}`);
   const projectedPanel = document.getElementById(`projected_panel_${idx}`);
@@ -558,6 +609,7 @@ function updateLineState(idx) {
   projectedPanel.className = 'metric-panel';
 
   if (!itemId) {
+    setIssueMeasureOptions(idx, null);
     unitField.value = '';
     stockValue.textContent = '0.00';
     stockNote.textContent = 'Select an item to show available stock.';
@@ -568,6 +620,7 @@ function updateLineState(idx) {
 
   const item = ITEM_MAP[itemId];
   if (!item) {
+    setIssueMeasureOptions(idx, null);
     unitField.value = '';
     stockValue.textContent = '0.00';
     stockNote.textContent = 'This item could not be loaded.';
@@ -578,7 +631,9 @@ function updateLineState(idx) {
   }
 
   const currentStock = Number(item.stock || 0);
-  const projected = currentStock - (Number.isFinite(qtyValue) ? qtyValue : 0);
+  setIssueMeasureOptions(idx, item);
+  const baseQty = (Number.isFinite(qtyValue) ? qtyValue : 0) * quantityMultiplier(item, measureValue);
+  const projected = currentStock - baseQty;
   unitField.value = item.unit;
   stockValue.textContent = `${formatNumber(currentStock)} ${item.unit}`;
   projectedValue.textContent = `${formatNumber(projected)} ${item.unit}`;
@@ -598,9 +653,9 @@ function updateLineState(idx) {
     return;
   }
 
-  if (qtyValue > currentStock) {
+  if (baseQty > currentStock) {
     projectedPanel.classList.add('danger');
-    projectedNote.textContent = `This exceeds available stock by ${formatNumber(qtyValue - currentStock)} ${item.unit}.`;
+    projectedNote.textContent = `This exceeds available stock by ${formatNumber(baseQty - currentStock)} ${item.unit}.`;
   } else if (projected <= Number(item.reorder_level || 0)) {
     projectedPanel.classList.add('warn');
     projectedNote.textContent = `This would leave the item at or below its reorder level of ${formatNumber(item.reorder_level)} ${item.unit}.`;
@@ -622,8 +677,10 @@ function getReceiptPreviewData() {
 
   document.querySelectorAll('.line-card').forEach(card => {
     const itemSelect = card.querySelector('select[name^="issue_item_"]');
+    const measureSelect = card.querySelector('select[name^="issue_measure_"]');
     const qtyInput = card.querySelector('input[name^="issue_qty_"]');
     const itemId = itemSelect ? itemSelect.value : '';
+    const measure = measureSelect ? measureSelect.value : 'base';
     const qtyRaw = qtyInput ? qtyInput.value.trim() : '';
 
     if (!itemId && !qtyRaw) {
@@ -643,12 +700,16 @@ function getReceiptPreviewData() {
     }
 
     const stock = Number(item.stock || 0);
+    const baseQty = qty * quantityMultiplier(item, measure);
+    const selectedMeasureText = selectedOptionText(measureSelect);
     rows.push({
       name: item.name,
       unit: item.unit,
       quantity: qty,
+      quantityLabel: measure === 'base' ? `${formatNumber(qty)} ${item.unit}` : `${formatNumber(qty)} ${selectedMeasureText}`,
+      baseQuantity: baseQty,
       stock,
-      projected: stock - qty,
+      projected: stock - baseQty,
     });
   });
 
@@ -675,7 +736,7 @@ function renderReceiptPreview() {
       <tr>
         <td><strong>${escapeHtml(line.name)}</strong></td>
         <td style="color:var(--muted)">${escapeHtml(line.unit)}</td>
-        <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">${formatNumber(line.quantity)}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">${escapeHtml(line.quantityLabel)}</td>
         <td style="text-align:right;font-variant-numeric:tabular-nums">${formatNumber(line.stock)}</td>
         <td style="text-align:right;font-variant-numeric:tabular-nums">${formatNumber(line.projected)}</td>
       </tr>
@@ -734,7 +795,7 @@ document.addEventListener('keydown', function (event) {
 
 window.addEventListener('DOMContentLoaded', () => {
   if (PRESET_LINES.length) {
-    PRESET_LINES.forEach(line => addLine(line.item_id, line.quantity));
+    PRESET_LINES.forEach(line => addLine(line.item_id, line.quantity, line.measure));
   } else {
     addLine();
     addLine();

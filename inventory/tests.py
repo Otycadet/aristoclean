@@ -444,6 +444,58 @@ class InventoryTestCase(TestCase):
         self.assertEqual(new_item.reorder_level, Decimal("8.00"))
         self.assertEqual(new_item.current_stock, Decimal("4.00"))
 
+    def test_stock_receive_converts_packs_to_base_unit(self):
+        self.item.unit = "pieces"
+        self.item.pack_size = Decimal("12.00")
+        self.item.save(update_fields=["unit", "pack_size"])
+
+        request = self.factory.post("/stock/receive/", data={
+            "supplier": "Local Supplier",
+            "reference": "PO-103",
+            "notes": "",
+            "received_at": "2026-04-22",
+            "line_item_0": str(self.item.pk),
+            "line_new_item_0": "",
+            "line_unit_0": "pieces",
+            "line_reorder_0": "10.00",
+            "line_measure_0": "pack",
+            "line_qty_0": "2",
+        })
+        request.user = self.storekeeper
+        self._attach_session_and_messages(request)
+
+        response = stock_receive(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("44.00"))
+
+    def test_issue_stock_converts_packs_to_base_unit(self):
+        self.item.unit = "pieces"
+        self.item.pack_size = Decimal("12.00")
+        self.item.save(update_fields=["unit", "pack_size"])
+
+        request = self.factory.post("/issue/", data={
+            "location": self.location.pk,
+            "issued_to": "Team A",
+            "issued_by": "Store Keeper",
+            "issued_at": "2026-04-22",
+            "notes": "",
+            "issue_item_0": str(self.item.pk),
+            "issue_measure_0": "pack",
+            "issue_qty_0": "1",
+        })
+        request.user = self.storekeeper
+        self._attach_session_and_messages(request)
+
+        response = issue_stock(request)
+
+        self.assertEqual(response.status_code, 302)
+        batch = IssueBatch.objects.get()
+        self.assertEqual(batch.lines.get().quantity, Decimal("12.00"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("8.00"))
+
     def test_superuser_can_open_manage_pages(self):
         request = self.factory.get("/manage/items/")
         request.user = self.superuser

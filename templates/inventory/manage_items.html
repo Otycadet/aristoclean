@@ -41,7 +41,9 @@
         <thead>
           <tr>
             <th>Name</th>
-            <th>Unit</th>
+            <th>Base Unit</th>
+            <th style="text-align:right">Pack</th>
+            <th style="text-align:right">Carton</th>
             <th style="text-align:right">Reorder Level</th>
             <th>Active</th>
             <th></th>
@@ -52,12 +54,14 @@
           <tr>
             <td><strong>{{ item.name }}</strong></td>
             <td>{{ item.unit }}</td>
+            <td style="text-align:right">{% if item.pack_size %}{{ item.pack_size|floatformat:0 }} {{ item.unit }}{% else %}-{% endif %}</td>
+            <td style="text-align:right">{% if item.carton_size %}{{ item.carton_size|floatformat:0 }} {{ item.unit }}{% else %}-{% endif %}</td>
             <td style="text-align:right">{{ item.reorder_level|floatformat:0 }}</td>
             <td>{% if item.active %}<span class="badge badge-ok">Yes</span>{% else %}<span class="badge badge-danger">No</span>{% endif %}</td>
             <td style="text-align:right"><a href="{% url 'manage_items' %}?edit={{ item.pk }}" class="btn btn-secondary btn-sm">Edit</a></td>
           </tr>
           {% empty %}
-          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">No items yet.</td></tr>
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">No items yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>

@@ -84,6 +84,8 @@ def serialize_items_for_js(items_queryset):
             "id": item.id,
             "name": item.name,
             "unit": item.unit,
+            "pack_size": float(item.pack_size) if item.pack_size else None,
+            "carton_size": float(item.carton_size) if item.carton_size else None,
             "reorder_level": float(item.reorder_level),
             "stock": float(getattr(item, "current_stock_db", item.current_stock)),
         }
@@ -156,12 +158,28 @@ def get_or_create_item(name: str, unit: str, reorder_level: Decimal) -> Item:
             return item
 
 
+def converted_quantity_for_item(item: Item, quantity: Decimal, measure: str) -> Decimal:
+    if measure == "pack" and not item.pack_size:
+        raise ValueError(f"Set a pack size for {item.name} before using packs.")
+    if measure == "carton" and not item.carton_size:
+        raise ValueError(f"Set a carton size for {item.name} before using cartons.")
+    return (quantity * item.multiplier_for_measure(measure)).quantize(Decimal("0.01"))
+
+
+def conversion_label_for_item(item: Item, quantity: Decimal, measure: str) -> str:
+    if measure in {"pack", "carton"}:
+        unit_label = item.label_for_measure(measure)
+        base_quantity = converted_quantity_for_item(item, quantity, measure)
+        return f"{quantity:,.0f} {unit_label} ({base_quantity:,.2f} {item.unit})"
+    return f"{quantity:,.0f} {item.unit}"
+
+
 def parse_delivery_lines(post_data):
     lines = []
     line_indices = sorted({
         int(match.group(1))
         for key in post_data.keys()
-        for match in [re.match(r"^line_(?:item|new_item|unit|reorder|qty)_(\d+)$", key)]
+        for match in [re.match(r"^line_(?:item|new_item|unit|reorder|measure|qty)_(\d+)$", key)]
         if match
     })
 
@@ -170,6 +188,7 @@ def parse_delivery_lines(post_data):
         new_name = post_data.get(f"line_new_item_{index}", "").strip()
         unit = post_data.get(f"line_unit_{index}", "").strip()
         reorder = post_data.get(f"line_reorder_{index}", "0").strip() or "0"
+        measure = post_data.get(f"line_measure_{index}", "base").strip() or "base"
         qty = post_data.get(f"line_qty_{index}", "").strip()
 
         if not any([existing_item_id, new_name, qty]):
@@ -185,18 +204,25 @@ def parse_delivery_lines(post_data):
             item_name = item.name
             unit = unit or item.unit
             reorder_value = decimal_from_post(reorder, f"reorder level for {item_name}")
+            entered_quantity = whole_number_from_post(qty, f"quantity for {item_name}")
+            quantity = converted_quantity_for_item(item, entered_quantity, measure)
+            quantity_label = conversion_label_for_item(item, entered_quantity, measure)
         else:
             if not new_name:
                 raise ValueError("Each delivery line must select an existing item or enter a new item name.")
             item_name = new_name
             unit = unit or "units"
             reorder_value = decimal_from_post(reorder, f"reorder level for {item_name}")
+            entered_quantity = whole_number_from_post(qty, f"quantity for {item_name}")
+            quantity = entered_quantity
+            quantity_label = f"{entered_quantity:,.0f} {unit}"
 
         lines.append({
             "item_name": item_name,
             "unit": unit,
             "reorder_level": reorder_value,
-            "quantity": whole_number_from_post(qty, f"quantity for {item_name}"),
+            "quantity": quantity,
+            "quantity_label": quantity_label,
         })
 
     return lines if lines else None
@@ -245,12 +271,13 @@ def parse_issue_lines(post_data):
     line_indices = sorted({
         int(match.group(1))
         for key in post_data.keys()
-        for match in [re.match(r"^issue_(?:item|qty)_(\d+)$", key)]
+        for match in [re.match(r"^issue_(?:item|measure|qty)_(\d+)$", key)]
         if match
     })
 
     for index in line_indices:
         item_id = post_data.get(f"issue_item_{index}", "").strip()
+        measure = post_data.get(f"issue_measure_{index}", "base").strip() or "base"
         qty = post_data.get(f"issue_qty_{index}", "").strip()
         if not any([item_id, qty]):
             continue
@@ -263,7 +290,12 @@ def parse_issue_lines(post_data):
             item = Item.objects.get(pk=int(item_id), active=True)
         except (Item.DoesNotExist, ValueError):
             raise ValueError("Select valid items from the list of active stock items.")
-        lines.append({"item": item, "quantity": whole_number_from_post(qty, f"quantity for {item.name}")})
+        entered_quantity = whole_number_from_post(qty, f"quantity for {item.name}")
+        lines.append({
+            "item": item,
+            "quantity": converted_quantity_for_item(item, entered_quantity, measure),
+            "quantity_label": conversion_label_for_item(item, entered_quantity, measure),
+        })
     return lines if lines else None
 
 
@@ -272,7 +304,7 @@ def collect_delivery_line_inputs(post_data):
     line_indices = sorted({
         int(match.group(1))
         for key in post_data.keys()
-        for match in [re.match(r"^line_(?:item|new_item|unit|reorder|qty)_(\d+)$", key)]
+        for match in [re.match(r"^line_(?:item|new_item|unit|reorder|measure|qty)_(\d+)$", key)]
         if match
     })
     for index in line_indices:
@@ -281,6 +313,7 @@ def collect_delivery_line_inputs(post_data):
             "new_name": post_data.get(f"line_new_item_{index}", "").strip(),
             "unit": post_data.get(f"line_unit_{index}", "").strip(),
             "reorder": post_data.get(f"line_reorder_{index}", "").strip(),
+            "measure": post_data.get(f"line_measure_{index}", "").strip(),
             "quantity": post_data.get(f"line_qty_{index}", "").strip(),
         })
     return [
@@ -310,12 +343,13 @@ def collect_issue_line_inputs(post_data):
     line_indices = sorted({
         int(match.group(1))
         for key in post_data.keys()
-        for match in [re.match(r"^issue_(?:item|qty)_(\d+)$", key)]
+        for match in [re.match(r"^issue_(?:item|measure|qty)_(\d+)$", key)]
         if match
     })
     for index in line_indices:
         lines.append({
             "item_id": post_data.get(f"issue_item_{index}", "").strip(),
+            "measure": post_data.get(f"issue_measure_{index}", "").strip(),
             "quantity": post_data.get(f"issue_qty_{index}", "").strip(),
         })
     return [line for line in lines if any(line.values())]

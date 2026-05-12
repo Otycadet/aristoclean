@@ -94,7 +94,7 @@
 
   .line-card-grid {
     display: grid;
-    grid-template-columns: minmax(0, 2.2fr) repeat(3, minmax(140px, 1fr));
+    grid-template-columns: minmax(0, 2.2fr) repeat(4, minmax(130px, 1fr));
     gap: 0.9rem 1rem;
     align-items: start;
   }
@@ -296,6 +296,8 @@
 const ITEMS = JSON.parse(document.getElementById('stock-receive-items').textContent);
 const PRESET_LINES = JSON.parse(document.getElementById('delivery-lines-data').textContent);
 const ITEM_OPTIONS = ITEMS.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.unit)})</option>`).join('');
+const ITEM_MAP = {};
+ITEMS.forEach(item => { ITEM_MAP[item.id] = item; });
 let lineCount = 0;
 
 function escapeHtml(value) {
@@ -307,7 +309,7 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function addLine(itemId = '', name = '', unit = '', reorder = '', qty = '') {
+function addLine(itemId = '', name = '', unit = '', reorder = '', qty = '', measure = 'base') {
   const idx = lineCount++;
   const container = document.getElementById('lineBody');
   const card = document.createElement('div');
@@ -340,6 +342,14 @@ function addLine(itemId = '', name = '', unit = '', reorder = '', qty = '') {
         <input type="text" name="line_unit_${idx}" id="unit_${idx}" value="${escapeHtml(unit)}" placeholder="e.g. packs">
       </div>
 
+      <div class="line-field">
+        <label for="measure_${idx}">Qty In</label>
+        <select name="line_measure_${idx}" id="measure_${idx}">
+          <option value="base">Base unit</option>
+        </select>
+        <div class="field-hint" id="measure_hint_${idx}">Choose an item to see pack/carton options.</div>
+      </div>
+
       <div class="line-field reorder-field">
         <label for="reorder_${idx}">Reorder Level</label>
         <input type="number" name="line_reorder_${idx}" id="reorder_${idx}" value="${escapeHtml(reorder)}" min="0" step="0.01" placeholder="0.00">
@@ -355,6 +365,7 @@ function addLine(itemId = '', name = '', unit = '', reorder = '', qty = '') {
   if (itemId) {
     document.getElementById(`item_select_${idx}`).value = itemId;
     selectExistingItem(idx, itemId);
+    document.getElementById(`measure_${idx}`).value = measure || 'base';
     if (unit) {
       document.getElementById(`unit_${idx}`).value = unit;
     }
@@ -363,6 +374,33 @@ function addLine(itemId = '', name = '', unit = '', reorder = '', qty = '') {
     }
   }
   refreshLineMeta();
+}
+
+function setMeasureOptions(idx, item) {
+  const measureSelect = document.getElementById(`measure_${idx}`);
+  const hint = document.getElementById(`measure_hint_${idx}`);
+  const current = measureSelect.value || 'base';
+
+  if (!item) {
+    measureSelect.innerHTML = '<option value="base">Base unit</option>';
+    hint.textContent = 'Choose an item to see pack/carton options.';
+    return;
+  }
+
+  const options = [`<option value="base">${escapeHtml(item.unit)}</option>`];
+  if (item.pack_size) {
+    options.push(`<option value="pack">Packs (${formatPlain(item.pack_size)} ${escapeHtml(item.unit)})</option>`);
+  }
+  if (item.carton_size) {
+    options.push(`<option value="carton">Cartons (${formatPlain(item.carton_size)} ${escapeHtml(item.unit)})</option>`);
+  }
+  measureSelect.innerHTML = options.join('');
+  measureSelect.value = Array.from(measureSelect.options).some(option => option.value === current) ? current : 'base';
+  hint.textContent = item.pack_size || item.carton_size ? 'Quantity will be converted into the base unit for stock.' : 'No pack/carton sizes set for this item.';
+}
+
+function formatPlain(value) {
+  return Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 function removeLine(idx) {
@@ -395,21 +433,31 @@ function selectExistingItem(idx, itemId) {
   if (!itemId) {
     sourceChip.textContent = 'New or existing item';
     savedMeta.textContent = 'Manual values allowed';
+    setMeasureOptions(idx, null);
     return;
   }
 
-  const item = ITEMS.find(entry => String(entry.id) === String(itemId));
+  const item = ITEM_MAP[itemId];
   if (!item) {
     sourceChip.textContent = 'New or existing item';
     savedMeta.textContent = 'Manual values allowed';
+    setMeasureOptions(idx, null);
     return;
   }
 
   newItemInput.value = '';
   document.getElementById(`unit_${idx}`).value = item.unit;
   document.getElementById(`reorder_${idx}`).value = item.reorder_level;
+  setMeasureOptions(idx, item);
   sourceChip.textContent = 'Using stocked item';
-  savedMeta.textContent = `${item.unit} | reorder ${Number(item.reorder_level).toFixed(2)}`;
+  const conversionNotes = [];
+  if (item.pack_size) {
+    conversionNotes.push(`pack ${formatPlain(item.pack_size)}`);
+  }
+  if (item.carton_size) {
+    conversionNotes.push(`carton ${formatPlain(item.carton_size)}`);
+  }
+  savedMeta.textContent = `${item.unit} | reorder ${Number(item.reorder_level).toFixed(2)}${conversionNotes.length ? ' | ' + conversionNotes.join(', ') : ''}`;
 }
 
 function handleNewItemInput(idx) {
@@ -419,6 +467,7 @@ function handleNewItemInput(idx) {
 
   if (newItemInput.value.trim()) {
     document.getElementById(`item_select_${idx}`).value = '';
+    setMeasureOptions(idx, null);
     sourceChip.textContent = 'Creating new item';
     savedMeta.textContent = 'Set unit and reorder level below';
   } else {
@@ -434,7 +483,8 @@ window.addEventListener('DOMContentLoaded', () => {
       line.new_name,
       line.unit,
       line.reorder,
-      line.quantity
+      line.quantity,
+      line.measure
     ));
   } else {
     addLine();

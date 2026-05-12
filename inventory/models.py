@@ -8,6 +8,8 @@ from django.utils import timezone
 class Item(models.Model):
     name = models.CharField(max_length=255, unique=True)
     unit = models.CharField(max_length=100)
+    pack_size = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    carton_size = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     reorder_level = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -47,6 +49,20 @@ class Item(models.Model):
         if self.current_stock >= self.reorder_level:
             return Decimal("0.00")
         return self.reorder_level - self.current_stock
+
+    def multiplier_for_measure(self, measure):
+        if measure == "pack" and self.pack_size:
+            return self.pack_size
+        if measure == "carton" and self.carton_size:
+            return self.carton_size
+        return Decimal("1.00")
+
+    def label_for_measure(self, measure):
+        if measure == "pack":
+            return "packs"
+        if measure == "carton":
+            return "cartons"
+        return self.unit
 
 
 class Location(models.Model):

@@ -339,6 +339,69 @@ class InventoryTestCase(TestCase):
         self.assertEqual(self.item.reorder_level, Decimal("12.00"))
         self.assertEqual(self.item.current_stock, Decimal("25.00"))
 
+    def test_stock_receive_ignores_extra_blank_line(self):
+        data = {
+            "supplier": "Local Supplier",
+            "reference": "PO-102",
+            "notes": "",
+            "received_at": "2026-04-22",
+        }
+        for index in range(5):
+            data.update({
+                f"line_item_{index}": str(self.item.pk),
+                f"line_new_item_{index}": "",
+                f"line_unit_{index}": "pcs",
+                f"line_reorder_{index}": "10.00",
+                f"line_qty_{index}": "1",
+            })
+        data.update({
+            "line_item_5": "",
+            "line_new_item_5": "",
+            "line_unit_5": "",
+            "line_reorder_5": "0",
+            "line_qty_5": "",
+        })
+        request = self.factory.post("/stock/receive/", data=data)
+        request.user = self.storekeeper
+        self._attach_session_and_messages(request)
+
+        response = stock_receive(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("25.00"))
+        self.assertEqual(StockEntry.objects.filter(item=self.item).count(), 6)
+
+    def test_issue_stock_ignores_extra_blank_line(self):
+        data = {
+            "location": self.location.pk,
+            "issued_to": "Team A",
+            "issued_by": "Store Keeper",
+            "issued_at": "2026-04-22",
+            "notes": "",
+        }
+        for index in range(5):
+            data.update({
+                f"issue_item_{index}": str(self.item.pk),
+                f"issue_qty_{index}": "1",
+            })
+        data.update({
+            "issue_item_5": "",
+            "issue_qty_5": "",
+        })
+        request = self.factory.post("/issue/", data=data)
+        request.user = self.storekeeper
+        self._attach_session_and_messages(request)
+
+        response = issue_stock(request)
+
+        self.assertEqual(response.status_code, 302)
+        batch = IssueBatch.objects.get()
+        self.assertEqual(batch.lines.count(), 1)
+        self.assertEqual(batch.lines.get().quantity, Decimal("5.00"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.current_stock, Decimal("15.00"))
+
     def test_stock_receive_rejects_decimal_quantity(self):
         request = self.factory.post("/stock/receive/", data={
             "supplier": "Local Supplier",

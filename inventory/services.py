@@ -172,7 +172,7 @@ def parse_delivery_lines(post_data):
         reorder = post_data.get(f"line_reorder_{index}", "0").strip() or "0"
         qty = post_data.get(f"line_qty_{index}", "").strip()
 
-        if not any([existing_item_id, new_name, unit, reorder, qty]):
+        if not any([existing_item_id, new_name, qty]):
             continue
         if not qty:
             raise ValueError("Enter quantity for each delivery line you add.")
@@ -283,7 +283,10 @@ def collect_delivery_line_inputs(post_data):
             "reorder": post_data.get(f"line_reorder_{index}", "").strip(),
             "quantity": post_data.get(f"line_qty_{index}", "").strip(),
         })
-    return [line for line in lines if any(line.values())]
+    return [
+        line for line in lines
+        if any([line["item_id"], line["new_name"], line["quantity"]])
+    ]
 
 
 def collect_reorder_line_inputs(post_data):

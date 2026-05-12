@@ -307,7 +307,7 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function addLine(itemId = '', name = '', unit = '', reorder = 0, qty = '') {
+function addLine(itemId = '', name = '', unit = '', reorder = '', qty = '') {
   const idx = lineCount++;
   const container = document.getElementById('lineBody');
   const card = document.createElement('div');
@@ -342,7 +342,7 @@ function addLine(itemId = '', name = '', unit = '', reorder = 0, qty = '') {
 
       <div class="line-field reorder-field">
         <label for="reorder_${idx}">Reorder Level</label>
-        <input type="number" name="line_reorder_${idx}" id="reorder_${idx}" value="${reorder}" min="0" step="0.01" placeholder="0.00">
+        <input type="number" name="line_reorder_${idx}" id="reorder_${idx}" value="${escapeHtml(reorder)}" min="0" step="0.01" placeholder="0.00">
       </div>
 
       <div class="line-field qty-field">
@@ -433,7 +433,7 @@ window.addEventListener('DOMContentLoaded', () => {
       line.item_id,
       line.new_name,
       line.unit,
-      line.reorder || 0,
+      line.reorder,
       line.quantity
     ));
   } else {

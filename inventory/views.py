@@ -173,7 +173,11 @@ def stock_receive(request):
     line_inputs = collect_delivery_line_inputs(request.POST) if request.method == "POST" else []
 
     if request.method == "POST":
-        lines = parse_delivery_lines(request.POST)
+        try:
+            lines = parse_delivery_lines(request.POST)
+        except ValueError as exc:
+            lines = None
+            error = str(exc)
         if header_form.is_valid() and lines is not None:
             header_data = header_form.cleaned_data
             try:
@@ -208,7 +212,7 @@ def stock_receive(request):
                 return redirect("stock_list")
             except ValueError as exc:
                 error = str(exc)
-        elif lines is None:
+        elif lines is None and error is None:
             error = "Add at least one item line."
 
     items_qs = annotate_item_stock(Item.objects.filter(active=True)).order_by("name")
@@ -236,7 +240,11 @@ def issue_stock(request):
     line_inputs = collect_issue_line_inputs(request.POST) if request.method == "POST" else []
 
     if request.method == "POST":
-        lines = parse_issue_lines(request.POST)
+        try:
+            lines = parse_issue_lines(request.POST)
+        except ValueError as exc:
+            lines = None
+            error = str(exc)
         if header_form.is_valid() and lines is not None:
             header_data = header_form.cleaned_data
             header_data["issued_by"] = issued_by_name
@@ -256,7 +264,7 @@ def issue_stock(request):
                 return redirect("receipt_detail", receipt_number=batch.receipt_number)
             except ValueError as exc:
                 error = str(exc)
-        elif lines is None:
+        elif lines is None and error is None:
             error = "Add at least one item line to the receipt."
 
     items_qs = annotate_item_stock(Item.objects.filter(active=True)).order_by("name")

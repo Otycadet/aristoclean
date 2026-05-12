@@ -7,6 +7,7 @@
     max-width: 780px;
     color: var(--muted);
     font-size: 0.92rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
     line-height: 1.55;
   }
 
@@ -21,7 +22,8 @@
     padding: 1rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    background: linear-gradient(180deg, #fff 0%, #fcfbf8 100%);
+    background: var(--surface);
+    box-shadow: var(--shadow);
   }
 
   .summary-kicker {
@@ -44,6 +46,7 @@
     margin-top: 0.3rem;
     color: var(--muted);
     font-size: 0.78rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
     line-height: 1.4;
   }
 
@@ -132,6 +135,29 @@
 </div>
 <p class="page-copy">This view is now easier to scan: filter by item or status, choose how the table is sorted, and spot low stock faster with clearer balance and shortfall signals.</p>
 
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-kicker">Showing</div>
+    <div class="summary-value">{{ stock_summary.filtered_items }}</div>
+    <div class="summary-note">Out of {{ stock_summary.total_items }} active stock item{{ stock_summary.total_items|pluralize }}.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Low Stock</div>
+    <div class="summary-value">{{ stock_summary.filtered_low_stock_count }}</div>
+    <div class="summary-note">{{ stock_summary.low_stock_count }} item{{ stock_summary.low_stock_count|pluralize }} are low across the full inventory.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Filtered Balance</div>
+    <div class="summary-value">{{ stock_summary.total_balance|floatformat:2 }}</div>
+    <div class="summary-note">Combined stock across the current filtered view.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Shortfall</div>
+    <div class="summary-value">{{ stock_summary.total_shortfall|floatformat:2 }}</div>
+    <div class="summary-note">Total units needed to cover all visible shortages.</div>
+  </div>
+</div>
+
 <div class="card">
   <div class="card-title">Filter and Sort</div>
   <form method="get" class="form-row filter-row">
@@ -163,29 +189,6 @@
       <a href="{% url 'stock_list' %}" class="btn btn-secondary">Reset</a>
     </div>
   </form>
-</div>
-
-<div class="summary-grid">
-  <div class="summary-card">
-    <div class="summary-kicker">Showing</div>
-    <div class="summary-value">{{ stock_summary.filtered_items }}</div>
-    <div class="summary-note">Out of {{ stock_summary.total_items }} active stock item{{ stock_summary.total_items|pluralize }}.</div>
-  </div>
-  <div class="summary-card">
-    <div class="summary-kicker">Low Stock</div>
-    <div class="summary-value">{{ stock_summary.filtered_low_stock_count }}</div>
-    <div class="summary-note">{{ stock_summary.low_stock_count }} item{{ stock_summary.low_stock_count|pluralize }} are low across the full inventory.</div>
-  </div>
-  <div class="summary-card">
-    <div class="summary-kicker">Filtered Balance</div>
-    <div class="summary-value">{{ stock_summary.total_balance|floatformat:2 }}</div>
-    <div class="summary-note">Combined stock across the current filtered view.</div>
-  </div>
-  <div class="summary-card">
-    <div class="summary-kicker">Shortfall</div>
-    <div class="summary-value">{{ stock_summary.total_shortfall|floatformat:2 }}</div>
-    <div class="summary-note">Total units needed to cover all visible shortages.</div>
-  </div>
 </div>
 
 <div class="card">

@@ -73,13 +73,15 @@ def format_display_quantity(item: Item, quantity: Decimal) -> str:
     unit = (item.unit or "").strip()
     unit_lower = unit.lower()
     is_piece_unit = unit_lower in {"piece", "pieces", "pcs"}
-    if not is_piece_unit or quantity <= 0 or not item.pack_size:
+    has_pack_size = item.pack_size and item.pack_size > 0
+    has_carton_size = item.carton_size and item.carton_size > 0
+    if not is_piece_unit or quantity <= 0 or not (has_pack_size or has_carton_size):
         return f"{quantity:,.2f} {unit}".strip()
 
     remaining = quantity
     parts = []
-    carton_size = item.carton_size if item.carton_size and item.carton_size > 0 else None
-    pack_size = item.pack_size if item.pack_size and item.pack_size > 0 else None
+    carton_size = item.carton_size if has_carton_size else None
+    pack_size = item.pack_size if has_pack_size else None
 
     if carton_size and remaining >= carton_size:
         cartons = int(remaining // carton_size)

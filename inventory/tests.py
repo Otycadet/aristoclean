@@ -771,6 +771,31 @@ class InventoryTestCase(TestCase):
         self.assertEqual(self.item.unit, "bottles")
         self.assertEqual(self.item.reorder_level, Decimal("15.00"))
 
+    def test_manage_item_can_convert_existing_stock_to_new_base_unit(self):
+        request = self.factory.post("/manage/items/", data={
+            "item_id": str(self.item.pk),
+            "name": self.item.name,
+            "unit": "pieces",
+            "pack_size": "48.00",
+            "carton_size": "",
+            "reorder_level": "10.00",
+            "active": "on",
+            "convert_existing_stock": "1",
+            "conversion_factor": "48",
+        })
+        request.user = self.superuser
+        self._attach_session_and_messages(request)
+
+        response = manage_items(request)
+
+        self.assertEqual(response.status_code, 302)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.unit, "pieces")
+        self.assertEqual(self.item.pack_size, Decimal("48.00"))
+        self.assertEqual(self.item.reorder_level, Decimal("480.00"))
+        self.assertEqual(StockEntry.objects.get(item=self.item).quantity, Decimal("960.00"))
+        self.assertEqual(self.item.current_stock, Decimal("960.00"))
+
     def test_superuser_can_edit_location(self):
         request = self.factory.post("/manage/locations/", data={
             "location_id": str(self.location.pk),

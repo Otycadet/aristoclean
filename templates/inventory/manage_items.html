@@ -18,6 +18,9 @@
       {% if editing_item %}
       <input type="hidden" name="item_id" value="{{ editing_item.pk }}">
       {% endif %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-error">{{ form.non_field_errors|join:", " }}</div>
+      {% endif %}
       {% for field in form %}
       <div class="form-group">
         <label>{{ field.label }}</label>
@@ -25,6 +28,25 @@
         {% if field.errors %}<div style="color:var(--danger);font-size:0.8rem;margin-top:0.25rem">{{ field.errors.0 }}</div>{% endif %}
       </div>
       {% endfor %}
+      {% if editing_item %}
+      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:0.9rem;margin-bottom:1rem;background:var(--bg);">
+        <div class="card-title" style="margin-bottom:0.4rem;">Convert Existing Stock</div>
+        <p style="margin:0 0 0.75rem;color:var(--muted);font-size:0.84rem;line-height:1.45;">
+          Use this when the quantity already saved for this item is in the old unit. For example, if 1 old pack equals 48 pieces, enter 48.
+        </p>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.88rem;">
+          <input type="checkbox" name="convert_existing_stock" value="1">
+          Multiply existing received, issued, adjustment, and reorder quantities
+        </label>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Conversion factor</label>
+          <input type="number" name="conversion_factor" min="0.01" step="0.01" placeholder="e.g. 48">
+          <div style="color:var(--muted);font-size:0.76rem;margin-top:0.35rem;">
+            Current saved stock: {{ editing_item.current_stock|floatformat:2 }} {{ editing_item.unit }}.
+          </div>
+        </div>
+      </div>
+      {% endif %}
       <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
         <button type="submit" class="btn btn-primary" style="flex:1 1 180px">{% if editing_item %}Update Item{% else %}Save Item{% endif %}</button>
         {% if editing_item %}

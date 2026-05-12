@@ -43,6 +43,7 @@ from .services import (
     collect_delivery_line_inputs,
     collect_issue_line_inputs,
     collect_reorder_line_inputs,
+    convert_existing_item_quantities,
     create_issue_batch,
     display_name_for_user,
     filter_report_batches,
@@ -633,20 +634,38 @@ def manage_items(request):
         form = ItemForm(instance=editing_item)
 
     if request.method == "POST" and form.is_valid():
-        item = form.save()
-        action = "Updated" if item_id else "Added"
-        messages.success(request, f"{action} {item.name}.")
-        log_inventory_action(
-            "item_saved",
-            user=request.user,
-            mode="update" if item_id else "create",
-            item_id=item.pk,
-            item_name=item.name,
-            unit=item.unit,
-            reorder_level=item.reorder_level,
-            active=item.active,
-        )
-        return redirect("manage_items")
+        convert_existing = bool(item_id and request.POST.get("convert_existing_stock"))
+        conversion_factor = Decimal("1.00")
+        if convert_existing:
+            try:
+                conversion_factor = Decimal(str(request.POST.get("conversion_factor", "")).strip()).quantize(Decimal("0.01"))
+                if conversion_factor <= 0:
+                    raise ValueError
+            except Exception:
+                form.add_error(None, "Enter a valid conversion factor greater than 0.")
+        if not form.errors:
+            with transaction.atomic():
+                item = form.save()
+                if convert_existing:
+                    convert_existing_item_quantities(item, conversion_factor)
+            action = "Updated" if item_id else "Added"
+            if convert_existing:
+                messages.success(request, f"{action} {item.name} and converted existing stock by x{conversion_factor}.")
+            else:
+                messages.success(request, f"{action} {item.name}.")
+            log_inventory_action(
+                "item_saved",
+                user=request.user,
+                mode="update" if item_id else "create",
+                item_id=item.pk,
+                item_name=item.name,
+                unit=item.unit,
+                reorder_level=item.reorder_level,
+                active=item.active,
+                converted_existing_stock=convert_existing,
+                conversion_factor=conversion_factor if convert_existing else None,
+            )
+            return redirect("manage_items")
     return render(request, "inventory/manage_items.html", {
         "items": items,
         "form": form,

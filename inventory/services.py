@@ -174,6 +174,27 @@ def conversion_label_for_item(item: Item, quantity: Decimal, measure: str) -> st
     return f"{quantity:,.0f} {item.unit}"
 
 
+def convert_existing_item_quantities(item: Item, factor: Decimal):
+    factor = Decimal(str(factor)).quantize(Decimal("0.01"))
+    if factor <= 0:
+        raise ValueError("Conversion factor must be greater than 0.")
+
+    for entry in StockEntry.objects.select_for_update().filter(item=item):
+        entry.quantity = (entry.quantity * factor).quantize(Decimal("0.01"))
+        entry.save(update_fields=["quantity"])
+
+    for line in DistributionLine.objects.select_for_update().filter(item=item):
+        line.quantity = (line.quantity * factor).quantize(Decimal("0.01"))
+        line.save(update_fields=["quantity"])
+
+    for adjustment in StockAdjustment.objects.select_for_update().filter(item=item):
+        adjustment.quantity_delta = (adjustment.quantity_delta * factor).quantize(Decimal("0.01"))
+        adjustment.save(update_fields=["quantity_delta"])
+
+    item.reorder_level = (item.reorder_level * factor).quantize(Decimal("0.01"))
+    item.save(update_fields=["reorder_level"])
+
+
 def parse_delivery_lines(post_data):
     lines = []
     line_indices = sorted({

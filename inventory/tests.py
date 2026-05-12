@@ -10,11 +10,13 @@ from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase, override_settings
 
 from .forms import UserCreateForm, UserUpdateForm
-from .models import DistributionLine, IssueBatch, Item, Location, SignInLog, StockAdjustment, StockEntry, UserProfile
+from .models import DeliveryBatch, DistributionLine, IssueBatch, Item, Location, SignInLog, StockAdjustment, StockEntry, UserProfile
 from .services import format_display_quantity
 from .views import (
     export_csv,
     issue_stock,
+    delivery_receipt_detail,
+    delivery_receipts_list,
     low_stock_report,
     manage_items,
     manage_locations,
@@ -340,6 +342,76 @@ class InventoryTestCase(TestCase):
         self.assertEqual(Item.objects.count(), 1)
         self.assertEqual(self.item.reorder_level, Decimal("12.00"))
         self.assertEqual(self.item.current_stock, Decimal("25.00"))
+
+    def test_stock_receive_creates_receiving_receipt(self):
+        request = self.factory.post("/stock/receive/", data={
+            "supplier": "Local Supplier",
+            "reference": "PO-104",
+            "notes": "Checked by store",
+            "received_at": "2026-04-22",
+            "line_item_0": str(self.item.pk),
+            "line_new_item_0": "",
+            "line_unit_0": "pcs",
+            "line_reorder_0": "10.00",
+            "line_qty_0": "5",
+        })
+        request.user = self.storekeeper
+        self._attach_session_and_messages(request)
+
+        response = stock_receive(request)
+
+        self.assertEqual(response.status_code, 302)
+        batch = DeliveryBatch.objects.get()
+        self.assertEqual(batch.receipt_number, "RCV-20260422-00001")
+        self.assertEqual(batch.supplier, "Local Supplier")
+        self.assertEqual(batch.reference, "PO-104")
+        self.assertEqual(batch.lines.count(), 1)
+        self.assertEqual(batch.lines.get().quantity, Decimal("5.00"))
+        self.assertEqual(batch.lines.get().batch, batch)
+
+    def test_delivery_receipt_detail_shows_received_lines(self):
+        batch = DeliveryBatch.objects.create(
+            supplier="Local Supplier",
+            reference="PO-105",
+            notes="",
+            received_at=date(2026, 4, 22),
+            created_by=self.storekeeper,
+        )
+        StockEntry.objects.create(
+            batch=batch,
+            item=self.item,
+            quantity=Decimal("7.00"),
+            supplier=batch.supplier,
+            reference=batch.reference,
+            received_at=batch.received_at,
+            created_by=self.storekeeper,
+        )
+        request = self.factory.get(f"/stock/receive/receipts/{batch.receipt_number}/")
+        request.user = self.storekeeper
+
+        response = delivery_receipt_detail(request, batch.receipt_number)
+        content = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("STOCK RECEIVING RECEIPT", content)
+        self.assertIn(batch.receipt_number, content)
+        self.assertIn("Soap", content)
+        self.assertIn("7", content)
+
+    def test_delivery_receipts_list_is_available_to_storekeeper(self):
+        DeliveryBatch.objects.create(
+            supplier="Local Supplier",
+            reference="PO-106",
+            received_at=date(2026, 4, 22),
+            created_by=self.storekeeper,
+        )
+        request = self.factory.get("/stock/receive/receipts/")
+        request.user = self.storekeeper
+
+        response = delivery_receipts_list(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Receiving Receipts", response.content.decode())
 
     def test_stock_receive_ignores_extra_blank_line(self):
         data = {

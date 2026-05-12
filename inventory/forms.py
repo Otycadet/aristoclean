@@ -155,6 +155,30 @@ class ReceiptFilterForm(forms.Form):
         ]
 
 
+class DeliveryReceiptFilterForm(forms.Form):
+    q = forms.CharField(required=False, max_length=255, label="Search")
+    item = forms.ModelChoiceField(
+        queryset=Item.objects.none(),
+        required=False,
+        label="Item",
+        empty_label="All items",
+    )
+    date_from = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="From",
+    )
+    date_to = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="To",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["item"].queryset = Item.objects.filter(active=True).order_by("name")
+
+
 class SignInLogFilterForm(forms.Form):
     q = forms.CharField(required=False, max_length=255, label="Search user or IP")
     date_from = forms.DateField(

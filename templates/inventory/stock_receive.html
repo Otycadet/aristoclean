@@ -220,7 +220,10 @@
 {% block content %}
 <div class="page-header">
   <h1>Receive Delivery</h1>
-  <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">Back to Stock</a>
+  <div class="toolbar">
+    <a href="{% url 'delivery_receipts_list' %}" class="btn btn-secondary btn-sm">Receiving Receipts</a>
+    <a href="{% url 'stock_list' %}" class="btn btn-secondary btn-sm">Back to Stock</a>
+  </div>
 </div>
 <p class="page-copy">Record each delivery with clean, separate line cards so the stock team can review supplier details, item setup, and quantities at a glance.</p>
 

@@ -122,6 +122,7 @@
     <a href="{% url 'stock_reorder' %}" class="btn btn-secondary btn-sm">Reorder</a>
     <a href="{% url 'low_stock_report' %}" class="btn btn-secondary btn-sm">Reorder Report</a>
     <a href="{% url 'stock_adjustment_create' %}" class="btn btn-secondary btn-sm">Adjust Stock</a>
+    <a href="{% url 'delivery_receipts_list' %}" class="btn btn-secondary btn-sm">Receiving Receipts</a>
     <a href="{% url 'export_stock_csv' %}" class="btn btn-secondary btn-sm">Export CSV</a>
     {% endif %}
     {% if user.is_superuser or user.profile.can_operate_stock %}

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Receiving Receipts - Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+  .page-copy {
+    margin: -0.65rem 0 1.1rem;
+    max-width: 760px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .summary-card {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, #fff 0%, #fcfbf8 100%);
+  }
+
+  .summary-kicker {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+  }
+
+  .summary-value {
+    margin-top: 0.35rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary-note {
+    margin-top: 0.3rem;
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Receiving Receipts</h1>
+  <div class="toolbar">
+    <a href="{% url 'receipts_list' %}" class="btn btn-secondary btn-sm">Issue Receipts</a>
+    <a href="{% url 'stock_receive' %}" class="btn btn-primary btn-sm">Receive Stock</a>
+  </div>
+</div>
+<p class="page-copy">Review deliveries received into stock, including supplier details, references, dates, and every item line recorded on each receiving receipt.</p>
+
+<div class="card">
+  <div class="card-title">Filter</div>
+  <form method="get" class="form-row" style="align-items:end;">
+    <div class="form-group" style="margin-bottom:0;">
+      <label>{{ form.q.label }}</label>
+      {{ form.q }}
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>{{ form.item.label }}</label>
+      {{ form.item }}
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>{{ form.date_from.label }}</label>
+      {{ form.date_from }}
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label>{{ form.date_to.label }}</label>
+      {{ form.date_to }}
+    </div>
+    <div class="toolbar">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      <a href="{% url 'delivery_receipts_list' %}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-kicker">Matching Receipts</div>
+    <div class="summary-value">{{ receipt_summary.total }}</div>
+    <div class="summary-note">Receiving receipts in the current filtered view.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Item Lines</div>
+    <div class="summary-value">{{ receipt_summary.line_count }}</div>
+    <div class="summary-note">Individual received item lines.</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-kicker">Total Quantity</div>
+    <div class="summary-value">{{ receipt_summary.quantity|floatformat:0 }}</div>
+    <div class="summary-note">Combined received quantity in each item's stock unit.</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Receipt #</th>
+          <th>Date</th>
+          <th>Supplier</th>
+          <th>Reference</th>
+          <th>Received By</th>
+          <th style="text-align:right">Items</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for batch in batches %}
+        <tr>
+          <td>
+            <a href="{% url 'delivery_receipt_detail' batch.receipt_number %}" style="color:var(--accent);font-weight:600;font-family:'Helvetica Neue',Arial,sans-serif;">
+              {{ batch.receipt_number }}
+            </a>
+          </td>
+          <td>{{ batch.received_at }}</td>
+          <td>{{ batch.supplier|default:"-" }}</td>
+          <td>{{ batch.reference|default:"-" }}</td>
+          <td>{{ batch.created_by|default:"-" }}</td>
+          <td style="text-align:right">{{ batch.line_count }}</td>
+          <td><a href="{% url 'delivery_receipt_detail' batch.receipt_number %}" class="btn btn-secondary btn-sm">View</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted)">No receiving receipts found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj and page_obj.paginator.num_pages > 1 %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+    <a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

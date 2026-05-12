@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from .forms import (
     DeliveryHeaderForm,
+    DeliveryReceiptFilterForm,
     IssueBatchHeaderForm,
     ItemForm,
     LocationForm,
@@ -26,7 +27,17 @@ from .forms import (
     UserCreateForm,
     UserUpdateForm,
 )
-from .models import DistributionLine, IssueBatch, Item, Location, SignInLog, StockAdjustment, StockEntry, UserProfile
+from .models import (
+    DeliveryBatch,
+    DistributionLine,
+    IssueBatch,
+    Item,
+    Location,
+    SignInLog,
+    StockAdjustment,
+    StockEntry,
+    UserProfile,
+)
 from .permissions import (
     admin_required,
     can_create_users,
@@ -183,6 +194,13 @@ def stock_receive(request):
             header_data = header_form.cleaned_data
             try:
                 with transaction.atomic():
+                    batch = DeliveryBatch.objects.create(
+                        supplier=header_data["supplier"],
+                        reference=header_data["reference"],
+                        notes=header_data["notes"],
+                        received_at=header_data["received_at"],
+                        created_by=request.user,
+                    )
                     for line in lines:
                         name = line["item_name"].strip()
                         qty = line["quantity"]
@@ -192,6 +210,7 @@ def stock_receive(request):
                             raise ValueError(f"Quantity must be greater than 0 for {name}.")
                         item = get_or_create_item(name, line["unit"].strip(), line["reorder_level"])
                         StockEntry.objects.create(
+                            batch=batch,
                             item=item,
                             quantity=qty,
                             supplier=header_data["supplier"],
@@ -200,17 +219,18 @@ def stock_receive(request):
                             received_at=header_data["received_at"],
                             created_by=request.user,
                         )
-                messages.success(request, f"Delivery of {len(lines)} item(s) recorded.")
+                messages.success(request, f"Receiving receipt {batch.receipt_number} created.")
                 log_inventory_action(
                     "stock_received",
                     user=request.user,
+                    receipt_number=batch.receipt_number,
                     item_count=len(lines),
                     items=[line["item_name"] for line in lines],
                     supplier=header_data["supplier"],
                     reference=header_data["reference"],
                     received_at=header_data["received_at"],
                 )
-                return redirect("stock_list")
+                return redirect("delivery_receipt_detail", receipt_number=batch.receipt_number)
             except ValueError as exc:
                 error = str(exc)
         elif lines is None and error is None:
@@ -387,6 +407,70 @@ def receipt_detail(request, receipt_number):
         "batch": batch,
         "lines": receipt_lines,
         "void_form": void_form,
+    })
+
+
+@login_required
+@stock_operator_required
+def delivery_receipts_list(request):
+    form = DeliveryReceiptFilterForm(request.GET or None)
+    batches = DeliveryBatch.objects.select_related("created_by").prefetch_related("lines__item")
+
+    if form.is_valid():
+        q = form.cleaned_data.get("q")
+        selected_item = form.cleaned_data.get("item")
+        date_from = form.cleaned_data.get("date_from")
+        date_to = form.cleaned_data.get("date_to")
+
+        if q:
+            batches = batches.filter(
+                Q(receipt_number__icontains=q)
+                | Q(supplier__icontains=q)
+                | Q(reference__icontains=q)
+                | Q(notes__icontains=q)
+                | Q(lines__item__name__icontains=q)
+            ).distinct()
+        if selected_item:
+            batches = batches.filter(lines__item=selected_item).distinct()
+        if date_from:
+            batches = batches.filter(received_at__gte=date_from)
+        if date_to:
+            batches = batches.filter(received_at__lte=date_to)
+
+    ordered_batches = batches.order_by("-received_at", "-id")
+    paginator = Paginator(ordered_batches, 25)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    return render(request, "inventory/delivery_receipts_list.html", {
+        "form": form,
+        "page_obj": page_obj,
+        "batches": page_obj.object_list,
+        "receipt_summary": {
+            "total": ordered_batches.count(),
+            "line_count": StockEntry.objects.filter(batch__in=ordered_batches).count(),
+            "quantity": StockEntry.objects.filter(batch__in=ordered_batches).aggregate(total=Sum("quantity"))["total"] or Decimal("0.00"),
+        },
+    })
+
+
+@login_required
+@stock_operator_required
+def delivery_receipt_detail(request, receipt_number):
+    batch = get_object_or_404(
+        DeliveryBatch.objects.select_related("created_by").prefetch_related("lines__item"),
+        receipt_number=receipt_number,
+    )
+    lines = [
+        {
+            "item_name": line.item.name,
+            "unit": line.item.unit,
+            "quantity": line.quantity,
+        }
+        for line in batch.lines.select_related("item")
+    ]
+    return render(request, "inventory/delivery_receipt_detail.html", {
+        "batch": batch,
+        "lines": lines,
     })
 
 

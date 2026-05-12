@@ -79,7 +79,41 @@ class Location(models.Model):
         return self.name
 
 
+class DeliveryBatch(models.Model):
+    """One receiving receipt covering multiple stock-entry lines."""
+
+    supplier = models.CharField(max_length=255, blank=True)
+    reference = models.CharField(max_length=255, blank=True)
+    receipt_number = models.CharField(max_length=100, unique=True, blank=True)
+    notes = models.TextField(blank=True)
+    received_at = models.DateField()
+    created_at = models.DateTimeField(default=timezone.now)
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="delivery_batches"
+    )
+
+    class Meta:
+        ordering = ["-received_at", "-id"]
+
+    def __str__(self):
+        return self.receipt_number or f"Delivery #{self.pk}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.receipt_number:
+            date_str = self.received_at.strftime("%Y%m%d")
+            self.receipt_number = f"RCV-{date_str}-{self.pk:05d}"
+            DeliveryBatch.objects.filter(pk=self.pk).update(receipt_number=self.receipt_number)
+
+    @property
+    def line_count(self):
+        return self.lines.count()
+
+
 class StockEntry(models.Model):
+    batch = models.ForeignKey(
+        DeliveryBatch, on_delete=models.CASCADE, related_name="lines", null=True, blank=True
+    )
     item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name="stock_entries")
     quantity = models.DecimalField(max_digits=12, decimal_places=2)
     supplier = models.CharField(max_length=255, blank=True)

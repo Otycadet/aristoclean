@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ batch.receipt_number }} - Aristoclean{% endblock %}
+{% block extra_head %}
+<style>
+  .page-copy {
+    margin: -0.65rem 0 1.1rem;
+    max-width: 760px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header no-print">
+  <h1>{{ batch.receipt_number }}</h1>
+  <div class="toolbar">
+    <a href="{% url 'delivery_receipts_list' %}" class="btn btn-secondary btn-sm">Receiving Receipts</a>
+    <button onclick="window.print()" class="btn btn-primary btn-sm" type="button">Print</button>
+  </div>
+</div>
+<p class="page-copy no-print">Review the full receiving record here before printing it for your stock files.</p>
+
+<div class="card" id="printable">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;">
+    <div>
+      <div style="font-size:1.4rem;font-weight:700;font-family:Georgia,serif;color:var(--accent)">Aristoclean</div>
+      <div style="font-size:0.78rem;color:var(--muted);font-family:'Helvetica Neue',Arial,sans-serif;margin-top:0.2rem">STOCK RECEIVING RECEIPT</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:1rem;font-weight:700;font-family:'Helvetica Neue',Arial,sans-serif;color:var(--text)">{{ batch.receipt_number }}</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-top:0.25rem">{{ batch.received_at }}</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1.25rem;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);">
+    <div>
+      <div class="card-title" style="margin-bottom:0.3rem;">Supplier</div>
+      <div>{{ batch.supplier|default:"-" }}</div>
+    </div>
+    <div>
+      <div class="card-title" style="margin-bottom:0.3rem;">Reference</div>
+      <div>{{ batch.reference|default:"-" }}</div>
+    </div>
+    <div>
+      <div class="card-title" style="margin-bottom:0.3rem;">Received By</div>
+      <div>{{ batch.created_by|default:"-" }}</div>
+    </div>
+    {% if batch.notes %}
+    <div style="grid-column:1/-1">
+      <div class="card-title" style="margin-bottom:0.3rem;">Notes</div>
+      <div>{{ batch.notes }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Unit</th>
+        <th style="text-align:right">Quantity Received</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td><strong>{{ line.item_name }}</strong></td>
+        <td style="color:var(--muted)">{{ line.unit }}</td>
+        <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ line.quantity|floatformat:0 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

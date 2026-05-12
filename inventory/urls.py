@@ -7,6 +7,9 @@ urlpatterns = [
     # Stock
     path("stock/", views.stock_list, name="stock_list"),
     path("stock/receive/", views.stock_receive, name="stock_receive"),
+    path("stock/receive/receipts/", views.delivery_receipts_list, name="delivery_receipts_list"),
+    path("stock/receive/receipts/<str:receipt_number>/",
+         views.delivery_receipt_detail, name="delivery_receipt_detail"),
     path("stock/reorder/", views.reorder_list, name="stock_reorder"),
     path("stock/adjust/", views.stock_adjustment_create,
          name="stock_adjustment_create"),

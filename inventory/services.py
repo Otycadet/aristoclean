@@ -76,7 +76,7 @@ def format_display_quantity(item: Item, quantity: Decimal) -> str:
     has_pack_size = item.pack_size and item.pack_size > 0
     has_carton_size = item.carton_size and item.carton_size > 0
     if not is_piece_unit or quantity <= 0 or not (has_pack_size or has_carton_size):
-        return f"{quantity:,.2f} {unit}".strip()
+        return f"{format_quantity_number(quantity)} {unit}".strip()
 
     remaining = quantity
     parts = []
@@ -94,9 +94,16 @@ def format_display_quantity(item: Item, quantity: Decimal) -> str:
         parts.append(f"{packs:,} pack{'s' if packs != 1 else ''}")
 
     if not parts or remaining > 0:
-        parts.append(f"{remaining:,.2f} {unit}".strip())
+        parts.append(f"{format_quantity_number(remaining)} {unit}".strip())
 
     return " + ".join(parts)
+
+
+def format_quantity_number(value: Decimal) -> str:
+    value = Decimal(str(value or "0")).quantize(Decimal("0.01"))
+    if value == value.to_integral_value():
+        return f"{int(value):,}"
+    return f"{value:,.2f}"
 
 
 def decimal_from_post(value, field_name):

@@ -534,10 +534,10 @@ class InventoryTestCase(TestCase):
         self.item.carton_size = Decimal("144.00")
         self.item.save(update_fields=["unit", "pack_size", "carton_size"])
 
-        self.assertEqual(format_display_quantity(self.item, Decimal("8.00")), "8.00 pieces")
+        self.assertEqual(format_display_quantity(self.item, Decimal("8.00")), "8 pieces")
         self.assertEqual(format_display_quantity(self.item, Decimal("24.00")), "2 packs")
         self.assertEqual(format_display_quantity(self.item, Decimal("156.00")), "1 carton + 1 pack")
-        self.assertEqual(format_display_quantity(self.item, Decimal("150.00")), "1 carton + 6.00 pieces")
+        self.assertEqual(format_display_quantity(self.item, Decimal("150.00")), "1 carton + 6 pieces")
 
     def test_display_quantity_rolls_pieces_up_to_cartons_without_packs(self):
         self.item.unit = "pieces"
@@ -545,9 +545,9 @@ class InventoryTestCase(TestCase):
         self.item.carton_size = Decimal("144.00")
         self.item.save(update_fields=["unit", "pack_size", "carton_size"])
 
-        self.assertEqual(format_display_quantity(self.item, Decimal("120.00")), "120.00 pieces")
+        self.assertEqual(format_display_quantity(self.item, Decimal("120.00")), "120 pieces")
         self.assertEqual(format_display_quantity(self.item, Decimal("144.00")), "1 carton")
-        self.assertEqual(format_display_quantity(self.item, Decimal("150.00")), "1 carton + 6.00 pieces")
+        self.assertEqual(format_display_quantity(self.item, Decimal("150.00")), "1 carton + 6 pieces")
 
     def test_convert_item_unit_command_updates_existing_quantities(self):
         batch = IssueBatch.objects.create(

@@ -546,27 +546,40 @@ function setIssueMeasureOptions(idx, item) {
     return;
   }
 
+  const stockUnit = String(item.unit || '').toLowerCase();
+  const stockIsPack = stockUnit === 'pack' || stockUnit === 'packs';
+  const stockIsPiece = stockUnit === 'piece' || stockUnit === 'pieces' || stockUnit === 'pcs';
   const options = [`<option value="base">${escapeHtml(item.unit)}</option>`];
   if (item.pack_size) {
-    options.push(`<option value="piece">Pieces (${formatPlain(item.pack_size)} per ${escapeHtml(item.unit)})</option>`);
+    if (stockIsPack) {
+      options.push(`<option value="piece">Pieces (${formatPlain(item.pack_size)} per ${escapeHtml(item.unit)})</option>`);
+    } else if (stockIsPiece) {
+      options.push(`<option value="pack">Packs (${formatPlain(item.pack_size)} pieces)</option>`);
+    }
   }
   if (item.carton_size) {
     options.push(`<option value="carton">Cartons (${formatPlain(item.carton_size)} pieces)</option>`);
   }
   measureSelect.innerHTML = options.join('');
   measureSelect.value = Array.from(measureSelect.options).some(option => option.value === current) ? current : 'base';
-  hint.textContent = item.pack_size || item.carton_size ? `Stock remains in ${item.unit}; pieces/cartons are converted before saving.` : 'No pieces-per-pack/carton sizes set for this item.';
+  hint.textContent = item.pack_size || item.carton_size ? `Stock remains in ${item.unit}; alternate units are converted before saving.` : 'No pack/carton sizes set for this item.';
 }
 
 function quantityInStockUnit(item, quantity, measure) {
   if (!item) {
     return quantity;
   }
-  if (measure === 'piece' && item.pack_size) {
+  const stockUnit = String(item.unit || '').toLowerCase();
+  const stockIsPack = stockUnit === 'pack' || stockUnit === 'packs';
+  const stockIsPiece = stockUnit === 'piece' || stockUnit === 'pieces' || stockUnit === 'pcs';
+  if (measure === 'piece' && item.pack_size && stockIsPack) {
     return quantity / Number(item.pack_size);
   }
+  if (measure === 'pack' && item.pack_size && stockIsPiece) {
+    return quantity * Number(item.pack_size);
+  }
   if (measure === 'carton' && item.carton_size) {
-    if (item.pack_size) {
+    if (stockIsPack && item.pack_size) {
       return quantity * Number(item.carton_size) / Number(item.pack_size);
     }
     return quantity * Number(item.carton_size);

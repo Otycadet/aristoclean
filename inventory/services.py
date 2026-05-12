@@ -51,16 +51,50 @@ def annotate_item_stock(queryset=None):
 def build_stock_rows(items):
     rows = []
     for item in items:
+        current_stock = item.current_stock_db
+        reorder_shortfall = max(item.reorder_level - current_stock, Decimal("0.00"))
         rows.append({
             "item": item,
-            "current_stock": item.current_stock_db,
+            "current_stock": current_stock,
             "total_received": item.total_received_db,
             "total_issued": item.total_issued_db,
             "total_adjustments": getattr(item, "total_adjustments_db", item.total_adjustments),
-            "low": item.current_stock_db <= item.reorder_level,
-            "reorder_shortfall": max(item.reorder_level - item.current_stock_db, Decimal("0.00")),
+            "low": current_stock <= item.reorder_level,
+            "reorder_shortfall": reorder_shortfall,
+            "current_stock_display": format_display_quantity(item, current_stock),
+            "reorder_level_display": format_display_quantity(item, item.reorder_level),
+            "reorder_shortfall_display": format_display_quantity(item, reorder_shortfall),
         })
     return rows
+
+
+def format_display_quantity(item: Item, quantity: Decimal) -> str:
+    quantity = Decimal(str(quantity or "0")).quantize(Decimal("0.01"))
+    unit = (item.unit or "").strip()
+    unit_lower = unit.lower()
+    is_piece_unit = unit_lower in {"piece", "pieces", "pcs"}
+    if not is_piece_unit or quantity <= 0 or not item.pack_size:
+        return f"{quantity:,.2f} {unit}".strip()
+
+    remaining = quantity
+    parts = []
+    carton_size = item.carton_size if item.carton_size and item.carton_size > 0 else None
+    pack_size = item.pack_size if item.pack_size and item.pack_size > 0 else None
+
+    if carton_size and remaining >= carton_size:
+        cartons = int(remaining // carton_size)
+        remaining = (remaining - (carton_size * cartons)).quantize(Decimal("0.01"))
+        parts.append(f"{cartons:,} carton{'s' if cartons != 1 else ''}")
+
+    if pack_size and remaining >= pack_size:
+        packs = int(remaining // pack_size)
+        remaining = (remaining - (pack_size * packs)).quantize(Decimal("0.01"))
+        parts.append(f"{packs:,} pack{'s' if packs != 1 else ''}")
+
+    if not parts or remaining > 0:
+        parts.append(f"{remaining:,.2f} {unit}".strip())
+
+    return " + ".join(parts)
 
 
 def decimal_from_post(value, field_name):
@@ -159,21 +193,33 @@ def get_or_create_item(name: str, unit: str, reorder_level: Decimal) -> Item:
 
 
 def converted_quantity_for_item(item: Item, quantity: Decimal, measure: str) -> Decimal:
+    stock_unit = item.unit.strip().lower()
+    stock_is_pack = stock_unit in {"pack", "packs"}
+    stock_is_piece = stock_unit in {"piece", "pieces", "pcs"}
+
     if measure == "piece":
         if not item.pack_size:
             raise ValueError(f"Set how many pieces are in one {item.unit} for {item.name}.")
-        return (quantity / item.pack_size).quantize(Decimal("0.01"))
+        if stock_is_pack:
+            return (quantity / item.pack_size).quantize(Decimal("0.01"))
+        return quantity.quantize(Decimal("0.01"))
+    if measure == "pack":
+        if not item.pack_size:
+            raise ValueError(f"Set how many pieces are in one pack for {item.name}.")
+        if stock_is_piece:
+            return (quantity * item.pack_size).quantize(Decimal("0.01"))
+        return quantity.quantize(Decimal("0.01"))
     if measure == "carton":
         if not item.carton_size:
             raise ValueError(f"Set how many pieces are in one carton for {item.name}.")
-        if item.pack_size:
+        if stock_is_pack and item.pack_size:
             return (quantity * item.carton_size / item.pack_size).quantize(Decimal("0.01"))
         return (quantity * item.carton_size).quantize(Decimal("0.01"))
     return quantity.quantize(Decimal("0.01"))
 
 
 def conversion_label_for_item(item: Item, quantity: Decimal, measure: str) -> str:
-    if measure in {"piece", "carton"}:
+    if measure in {"piece", "pack", "carton"}:
         unit_label = item.label_for_measure(measure)
         stock_quantity = converted_quantity_for_item(item, quantity, measure)
         return f"{quantity:,.0f} {unit_label} ({stock_quantity:,.2f} {item.unit})"

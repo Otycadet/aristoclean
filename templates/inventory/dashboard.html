@@ -55,8 +55,8 @@
             <tr>
               <td><strong>{{ row.item.name }}</strong></td>
               <td style="color:var(--muted)">{{ row.item.unit }}</td>
-              <td style="text-align:right;font-variant-numeric:tabular-nums">{{ row.current_stock|floatformat:2 }}</td>
-              <td style="text-align:right;color:var(--muted)">{{ row.item.reorder_level|floatformat:2 }}</td>
+              <td style="text-align:right;font-variant-numeric:tabular-nums">{{ row.current_stock_display }}</td>
+              <td style="text-align:right;color:var(--muted)">{{ row.reorder_level_display }}</td>
               <td>
                 {% if row.low %}
                 <span class="badge badge-low">Low</span>
@@ -98,8 +98,8 @@
             <tr>
               <td><strong>{{ row.item.name }}</strong></td>
               <td>{{ row.item.unit }}</td>
-              <td style="text-align:right">{{ row.current_stock|floatformat:2 }}</td>
-              <td style="text-align:right">{{ row.reorder_shortfall|floatformat:2 }}</td>
+              <td style="text-align:right">{{ row.current_stock_display }}</td>
+              <td style="text-align:right">{{ row.reorder_shortfall_display }}</td>
             </tr>
             {% endfor %}
           </tbody>

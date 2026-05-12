@@ -209,7 +209,7 @@
           <td>
             <div class="item-cell">
               <strong>{{ row.item.name }}</strong>
-              <span class="item-meta">Reorder level {{ row.item.reorder_level|floatformat:2 }} {{ row.item.unit }}</span>
+              <span class="item-meta">Reorder level {{ row.reorder_level_display }}</span>
             </div>
           </td>
           <td style="color:var(--muted)">{{ row.item.unit }}</td>
@@ -217,7 +217,7 @@
           <td style="text-align:right;color:var(--muted)">{{ row.total_issued|floatformat:2 }}</td>
           <td style="text-align:right;color:var(--muted)">{{ row.total_adjustments|floatformat:2 }}</td>
           <td class="balance-cell">
-            <div class="balance-main">{{ row.current_stock|floatformat:2 }}</div>
+            <div class="balance-main">{{ row.current_stock_display }}</div>
             <div class="balance-meter">
               {% if row.current_stock > 0 %}
               {% if row.item.reorder_level > 0 %}
@@ -231,13 +231,13 @@
               {% endif %}
             </div>
           </td>
-          <td style="text-align:right;color:var(--muted)">{{ row.item.reorder_level|floatformat:2 }}</td>
-          <td style="text-align:right;color:var(--muted)">{{ row.reorder_shortfall|floatformat:2 }}</td>
+          <td style="text-align:right;color:var(--muted)">{{ row.reorder_level_display }}</td>
+          <td style="text-align:right;color:var(--muted)">{{ row.reorder_shortfall_display }}</td>
           <td>
             <div class="status-stack">
               {% if row.low %}
               <span class="badge badge-low">Low Stock</span>
-              <span class="status-note">Needs {{ row.reorder_shortfall|floatformat:2 }} more to recover.</span>
+              <span class="status-note">Needs {{ row.reorder_shortfall_display }} more to recover.</span>
               {% else %}
               <span class="badge badge-ok">OK</span>
               <span class="status-note">Healthy stock level above the reorder threshold.</span>

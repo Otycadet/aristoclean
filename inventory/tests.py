@@ -11,6 +11,7 @@ from django.test import RequestFactory, TestCase, override_settings
 
 from .forms import UserCreateForm, UserUpdateForm
 from .models import DistributionLine, IssueBatch, Item, Location, SignInLog, StockAdjustment, StockEntry, UserProfile
+from .services import format_display_quantity
 from .views import (
     export_csv,
     issue_stock,
@@ -498,6 +499,45 @@ class InventoryTestCase(TestCase):
         self.item.refresh_from_db()
         self.assertEqual(self.item.unit, "packs")
         self.assertEqual(self.item.current_stock, Decimal("19.00"))
+
+    def test_issue_stock_converts_packs_to_stock_pieces(self):
+        self.item.name = "Hand Towels"
+        self.item.unit = "pieces"
+        self.item.pack_size = Decimal("12.00")
+        self.item.save(update_fields=["name", "unit", "pack_size"])
+
+        request = self.factory.post("/issue/", data={
+            "location": self.location.pk,
+            "issued_to": "Team A",
+            "issued_by": "Store Keeper",
+            "issued_at": "2026-04-22",
+            "notes": "",
+            "issue_item_0": str(self.item.pk),
+            "issue_measure_0": "pack",
+            "issue_qty_0": "1",
+        })
+        request.user = self.storekeeper
+        self._attach_session_and_messages(request)
+
+        response = issue_stock(request)
+
+        self.assertEqual(response.status_code, 302)
+        batch = IssueBatch.objects.get()
+        self.assertEqual(batch.lines.get().quantity, Decimal("12.00"))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.unit, "pieces")
+        self.assertEqual(self.item.current_stock, Decimal("8.00"))
+
+    def test_display_quantity_rolls_pieces_up_to_packs_and_cartons(self):
+        self.item.unit = "pieces"
+        self.item.pack_size = Decimal("12.00")
+        self.item.carton_size = Decimal("144.00")
+        self.item.save(update_fields=["unit", "pack_size", "carton_size"])
+
+        self.assertEqual(format_display_quantity(self.item, Decimal("8.00")), "8.00 pieces")
+        self.assertEqual(format_display_quantity(self.item, Decimal("24.00")), "2 packs")
+        self.assertEqual(format_display_quantity(self.item, Decimal("156.00")), "1 carton + 1 pack")
+        self.assertEqual(format_display_quantity(self.item, Decimal("150.00")), "1 carton + 6.00 pieces")
 
     def test_convert_item_unit_command_updates_existing_quantities(self):
         batch = IssueBatch.objects.create(

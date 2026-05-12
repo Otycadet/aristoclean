@@ -389,14 +389,14 @@ function setMeasureOptions(idx, item) {
 
   const options = [`<option value="base">${escapeHtml(item.unit)}</option>`];
   if (item.pack_size) {
-    options.push(`<option value="pack">Packs (${formatPlain(item.pack_size)} ${escapeHtml(item.unit)})</option>`);
+    options.push(`<option value="piece">Pieces (${formatPlain(item.pack_size)} per ${escapeHtml(item.unit)})</option>`);
   }
   if (item.carton_size) {
-    options.push(`<option value="carton">Cartons (${formatPlain(item.carton_size)} ${escapeHtml(item.unit)})</option>`);
+    options.push(`<option value="carton">Cartons (${formatPlain(item.carton_size)} pieces)</option>`);
   }
   measureSelect.innerHTML = options.join('');
   measureSelect.value = Array.from(measureSelect.options).some(option => option.value === current) ? current : 'base';
-  hint.textContent = item.pack_size || item.carton_size ? 'Quantity will be converted into the base unit for stock.' : 'No pack/carton sizes set for this item.';
+  hint.textContent = item.pack_size || item.carton_size ? `Stock remains in ${item.unit}; pieces/cartons are converted before saving.` : 'No pieces-per-pack/carton sizes set for this item.';
 }
 
 function formatPlain(value) {
@@ -452,10 +452,10 @@ function selectExistingItem(idx, itemId) {
   sourceChip.textContent = 'Using stocked item';
   const conversionNotes = [];
   if (item.pack_size) {
-    conversionNotes.push(`pack ${formatPlain(item.pack_size)}`);
+    conversionNotes.push(`${formatPlain(item.pack_size)} pieces/${item.unit}`);
   }
   if (item.carton_size) {
-    conversionNotes.push(`carton ${formatPlain(item.carton_size)}`);
+    conversionNotes.push(`${formatPlain(item.carton_size)} pieces/carton`);
   }
   savedMeta.textContent = `${item.unit} | reorder ${Number(item.reorder_level).toFixed(2)}${conversionNotes.length ? ' | ' + conversionNotes.join(', ') : ''}`;
 }

@@ -64,9 +64,9 @@ class ItemForm(forms.ModelForm):
         model = Item
         fields = ["name", "unit", "pack_size", "carton_size", "reorder_level", "active"]
         labels = {
-            "unit": "Base unit",
-            "pack_size": "Pieces / base units in one pack",
-            "carton_size": "Pieces / base units in one carton",
+            "unit": "Stock unit",
+            "pack_size": "Pieces in one pack",
+            "carton_size": "Pieces in one carton",
         }
 
     def clean_pack_size(self):

@@ -445,9 +445,9 @@ class InventoryTestCase(TestCase):
         self.assertEqual(new_item.reorder_level, Decimal("8.00"))
         self.assertEqual(new_item.current_stock, Decimal("4.00"))
 
-    def test_stock_receive_converts_packs_to_base_unit(self):
-        self.item.unit = "pieces"
-        self.item.pack_size = Decimal("12.00")
+    def test_stock_receive_converts_pieces_to_stock_packs(self):
+        self.item.unit = "packs"
+        self.item.pack_size = Decimal("48.00")
         self.item.save(update_fields=["unit", "pack_size"])
 
         request = self.factory.post("/stock/receive/", data={
@@ -457,10 +457,10 @@ class InventoryTestCase(TestCase):
             "received_at": "2026-04-22",
             "line_item_0": str(self.item.pk),
             "line_new_item_0": "",
-            "line_unit_0": "pieces",
+            "line_unit_0": "packs",
             "line_reorder_0": "10.00",
-            "line_measure_0": "pack",
-            "line_qty_0": "2",
+            "line_measure_0": "piece",
+            "line_qty_0": "96",
         })
         request.user = self.storekeeper
         self._attach_session_and_messages(request)
@@ -469,11 +469,12 @@ class InventoryTestCase(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.item.refresh_from_db()
-        self.assertEqual(self.item.current_stock, Decimal("44.00"))
+        self.assertEqual(self.item.unit, "packs")
+        self.assertEqual(self.item.current_stock, Decimal("22.00"))
 
-    def test_issue_stock_converts_packs_to_base_unit(self):
-        self.item.unit = "pieces"
-        self.item.pack_size = Decimal("12.00")
+    def test_issue_stock_converts_pieces_to_stock_packs(self):
+        self.item.unit = "packs"
+        self.item.pack_size = Decimal("48.00")
         self.item.save(update_fields=["unit", "pack_size"])
 
         request = self.factory.post("/issue/", data={
@@ -483,8 +484,8 @@ class InventoryTestCase(TestCase):
             "issued_at": "2026-04-22",
             "notes": "",
             "issue_item_0": str(self.item.pk),
-            "issue_measure_0": "pack",
-            "issue_qty_0": "1",
+            "issue_measure_0": "piece",
+            "issue_qty_0": "48",
         })
         request.user = self.storekeeper
         self._attach_session_and_messages(request)
@@ -493,9 +494,10 @@ class InventoryTestCase(TestCase):
 
         self.assertEqual(response.status_code, 302)
         batch = IssueBatch.objects.get()
-        self.assertEqual(batch.lines.get().quantity, Decimal("12.00"))
+        self.assertEqual(batch.lines.get().quantity, Decimal("1.00"))
         self.item.refresh_from_db()
-        self.assertEqual(self.item.current_stock, Decimal("8.00"))
+        self.assertEqual(self.item.unit, "packs")
+        self.assertEqual(self.item.current_stock, Decimal("19.00"))
 
     def test_convert_item_unit_command_updates_existing_quantities(self):
         batch = IssueBatch.objects.create(
@@ -771,17 +773,15 @@ class InventoryTestCase(TestCase):
         self.assertEqual(self.item.unit, "bottles")
         self.assertEqual(self.item.reorder_level, Decimal("15.00"))
 
-    def test_manage_item_can_convert_existing_stock_to_new_base_unit(self):
+    def test_manage_item_can_add_piece_count_without_changing_stock_unit(self):
         request = self.factory.post("/manage/items/", data={
             "item_id": str(self.item.pk),
             "name": self.item.name,
-            "unit": "pieces",
+            "unit": "packs",
             "pack_size": "48.00",
             "carton_size": "",
             "reorder_level": "10.00",
             "active": "on",
-            "convert_existing_stock": "1",
-            "conversion_factor": "48",
         })
         request.user = self.superuser
         self._attach_session_and_messages(request)
@@ -790,11 +790,11 @@ class InventoryTestCase(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.item.refresh_from_db()
-        self.assertEqual(self.item.unit, "pieces")
+        self.assertEqual(self.item.unit, "packs")
         self.assertEqual(self.item.pack_size, Decimal("48.00"))
-        self.assertEqual(self.item.reorder_level, Decimal("480.00"))
-        self.assertEqual(StockEntry.objects.get(item=self.item).quantity, Decimal("960.00"))
-        self.assertEqual(self.item.current_stock, Decimal("960.00"))
+        self.assertEqual(self.item.reorder_level, Decimal("10.00"))
+        self.assertEqual(StockEntry.objects.get(item=self.item).quantity, Decimal("20.00"))
+        self.assertEqual(self.item.current_stock, Decimal("20.00"))
 
     def test_superuser_can_edit_location(self):
         request = self.factory.post("/manage/locations/", data={

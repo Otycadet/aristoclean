@@ -58,6 +58,8 @@ class Item(models.Model):
         return Decimal("1.00")
 
     def label_for_measure(self, measure):
+        if measure == "piece":
+            return "pieces"
         if measure == "pack":
             return "packs"
         if measure == "carton":

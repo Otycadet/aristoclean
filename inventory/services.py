@@ -159,18 +159,24 @@ def get_or_create_item(name: str, unit: str, reorder_level: Decimal) -> Item:
 
 
 def converted_quantity_for_item(item: Item, quantity: Decimal, measure: str) -> Decimal:
-    if measure == "pack" and not item.pack_size:
-        raise ValueError(f"Set a pack size for {item.name} before using packs.")
-    if measure == "carton" and not item.carton_size:
-        raise ValueError(f"Set a carton size for {item.name} before using cartons.")
-    return (quantity * item.multiplier_for_measure(measure)).quantize(Decimal("0.01"))
+    if measure == "piece":
+        if not item.pack_size:
+            raise ValueError(f"Set how many pieces are in one {item.unit} for {item.name}.")
+        return (quantity / item.pack_size).quantize(Decimal("0.01"))
+    if measure == "carton":
+        if not item.carton_size:
+            raise ValueError(f"Set how many pieces are in one carton for {item.name}.")
+        if item.pack_size:
+            return (quantity * item.carton_size / item.pack_size).quantize(Decimal("0.01"))
+        return (quantity * item.carton_size).quantize(Decimal("0.01"))
+    return quantity.quantize(Decimal("0.01"))
 
 
 def conversion_label_for_item(item: Item, quantity: Decimal, measure: str) -> str:
-    if measure in {"pack", "carton"}:
+    if measure in {"piece", "carton"}:
         unit_label = item.label_for_measure(measure)
-        base_quantity = converted_quantity_for_item(item, quantity, measure)
-        return f"{quantity:,.0f} {unit_label} ({base_quantity:,.2f} {item.unit})"
+        stock_quantity = converted_quantity_for_item(item, quantity, measure)
+        return f"{quantity:,.0f} {unit_label} ({stock_quantity:,.2f} {item.unit})"
     return f"{quantity:,.0f} {item.unit}"
 
 

@@ -69,6 +69,65 @@
       transition: color 0.15s, background 0.15s;
       border-bottom: 3px solid transparent;
     }
+    .nav-group {
+      position: relative;
+    }
+    .nav-group summary {
+      list-style: none;
+      color: rgba(255,255,255,0.85);
+      padding: 1.15rem 0.85rem;
+      font-size: 0.82rem;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      user-select: none;
+    }
+    .nav-group summary::-webkit-details-marker {
+      display: none;
+    }
+    .nav-group summary::after {
+      content: "▾";
+      margin-left: 0.45rem;
+      font-size: 0.7rem;
+      opacity: 0.7;
+    }
+    .nav-group[open] summary,
+    .nav-group summary:hover,
+    .nav-group.active summary {
+      color: #fff;
+      border-bottom-color: rgba(255,255,255,0.6);
+    }
+    .nav-submenu {
+      display: flex;
+      flex-direction: column;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      min-width: 210px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: 0.35rem;
+      z-index: 120;
+    }
+    .nav-submenu a {
+      color: var(--text);
+      border-bottom: 0;
+      border-radius: calc(var(--radius) - 2px);
+      padding: 0.65rem 0.75rem;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 0.84rem;
+    }
+    .nav-submenu a:hover,
+    .nav-submenu a.active {
+      color: var(--accent);
+      background: var(--accent-light);
+      border-bottom-color: transparent;
+    }
     nav a:hover, nav a.active {
       color: #fff;
       border-bottom-color: rgba(255,255,255,0.6);
@@ -336,6 +395,45 @@
         color: rgba(255,255,255,0.76);
         letter-spacing: 0.08em;
       }
+      .nav-group {
+        position: static;
+      }
+      .nav-group summary {
+        border-bottom: 0;
+        border-radius: var(--radius);
+        padding: 0.78rem 0.85rem;
+        color: rgba(255,255,255,0.76);
+        letter-spacing: 0.08em;
+      }
+      .nav-group[open] summary,
+      .nav-group summary:hover,
+      .nav-group.active summary {
+        background: rgba(255,255,255,0.12);
+        color: #fff;
+        border-bottom-color: transparent;
+      }
+      .nav-group.active summary {
+        box-shadow: inset 3px 0 0 rgba(255,255,255,0.78);
+      }
+      .nav-submenu {
+        position: static;
+        min-width: 0;
+        margin: 0.25rem 0 0.45rem 0.55rem;
+        padding: 0.2rem;
+        background: rgba(255,255,255,0.08);
+        border-color: rgba(255,255,255,0.12);
+        box-shadow: none;
+      }
+      .nav-submenu a {
+        color: rgba(255,255,255,0.74);
+        padding: 0.55rem 0.7rem;
+        font-size: 0.78rem;
+      }
+      .nav-submenu a:hover,
+      .nav-submenu a.active {
+        color: #fff;
+        background: rgba(255,255,255,0.12);
+      }
 
       nav a:hover,
       nav a.active {
@@ -435,6 +533,19 @@
         padding: 0.95rem 0.7rem;
         font-size: 0.74rem;
         white-space: nowrap;
+      }
+      .nav-group {
+        flex: 0 0 auto;
+      }
+      .nav-group summary {
+        padding: 0.95rem 0.7rem;
+        font-size: 0.74rem;
+        white-space: nowrap;
+      }
+      .nav-submenu {
+        position: absolute;
+        top: 100%;
+        left: 0;
       }
 
       .nav-spacer,
@@ -575,18 +686,43 @@
     Aristoclean
     <span>Inventory Manager</span>
   </div>
-  <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
-  <a href="{% url 'stock_list' %}" {% if 'stock' in request.resolver_match.url_name or 'low_stock' in request.resolver_match.url_name or 'delivery_receipt' in request.resolver_match.url_name %}class="active"{% endif %}>Stock</a>
+  {% with current_url=request.resolver_match.url_name %}
+  <a href="{% url 'dashboard' %}" {% if current_url == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+  <details class="nav-group{% if 'stock' in current_url or 'low_stock' in current_url or 'delivery_receipt' in current_url %} active{% endif %}" {% if 'stock' in current_url or 'low_stock' in current_url or 'delivery_receipt' in current_url %}open{% endif %}>
+    <summary>Stock</summary>
+    <div class="nav-submenu">
+      <a href="{% url 'stock_list' %}" {% if current_url == 'stock_list' %}class="active"{% endif %}>Stock Levels</a>
+      {% if user.is_superuser or user.profile.can_operate_stock %}
+      <a href="{% url 'stock_receive' %}" {% if current_url == 'stock_receive' %}class="active"{% endif %}>Receive Delivery</a>
+      <a href="{% url 'delivery_receipts_list' %}" {% if 'delivery_receipt' in current_url %}class="active"{% endif %}>Receiving Receipts</a>
+      {% endif %}
+      {% if user.is_superuser or user.profile.can_oversee_operations %}
+      <a href="{% url 'stock_reorder' %}" {% if current_url == 'stock_reorder' %}class="active"{% endif %}>Reorder</a>
+      <a href="{% url 'low_stock_report' %}" {% if 'low_stock' in current_url %}class="active"{% endif %}>Reorder Report</a>
+      <a href="{% url 'stock_adjustment_create' %}" {% if current_url == 'stock_adjustment_create' %}class="active"{% endif %}>Adjust Stock</a>
+      <a href="{% url 'export_stock_csv' %}">Export CSV</a>
+      {% endif %}
+    </div>
+  </details>
   {% if user.is_superuser or user.profile.can_operate_stock %}
   <a href="{% url 'issue_stock' %}" {% if 'issue' in request.resolver_match.url_name %}class="active"{% endif %}>Issue</a>
   {% endif %}
-  <a href="{% url 'receipts_list' %}" {% if 'receipt' in request.resolver_match.url_name and not 'delivery_receipt' in request.resolver_match.url_name %}class="active"{% endif %}>Receipts</a>
+  <a href="{% url 'receipts_list' %}" {% if 'receipt' in current_url and not 'delivery_receipt' in current_url %}class="active"{% endif %}>Receipts</a>
   {% if user.is_superuser or user.profile.can_view_reports %}
-  <a href="{% url 'reports' %}" {% if 'report' in request.resolver_match.url_name %}class="active"{% endif %}>Reports</a>
+  <a href="{% url 'reports' %}" {% if 'report' in current_url %}class="active"{% endif %}>Reports</a>
   {% endif %}
   {% if user.is_superuser or user.profile.can_manage_settings %}
-  <a href="{% url 'manage_items' %}" {% if 'manage' in request.resolver_match.url_name %}class="active"{% endif %}>Manage</a>
+  <details class="nav-group{% if 'manage' in current_url or current_url == 'sign_in_logs' %} active{% endif %}" {% if 'manage' in current_url or current_url == 'sign_in_logs' %}open{% endif %}>
+    <summary>Manage</summary>
+    <div class="nav-submenu">
+      <a href="{% url 'manage_items' %}" {% if current_url == 'manage_items' %}class="active"{% endif %}>Items</a>
+      <a href="{% url 'manage_locations' %}" {% if current_url == 'manage_locations' %}class="active"{% endif %}>Locations</a>
+      <a href="{% url 'manage_users' %}" {% if current_url == 'manage_users' %}class="active"{% endif %}>Users</a>
+      <a href="{% url 'sign_in_logs' %}" {% if current_url == 'sign_in_logs' %}class="active"{% endif %}>Sign-ins</a>
+    </div>
+  </details>
   {% endif %}
+  {% endwith %}
   <div class="nav-spacer"></div>
   <span class="nav-user">{{ user.get_full_name|default:user.username }}</span>
   <form method="post" action="{% url 'logout' %}" class="nav-logout-form">

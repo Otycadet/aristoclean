@@ -38,7 +38,7 @@
       flex-direction: column;
     }
     body.nav-collapsed {
-      --sidebar-width: 78px;
+      --sidebar-width: 92px;
     }
     nav {
       background: linear-gradient(180deg, #155f3a 0%, #104b2f 100%);
@@ -397,7 +397,7 @@
       }
       .nav-toggle {
         display: inline-flex;
-        align-self: flex-end;
+        align-self: center;
         margin-bottom: 0.65rem;
       }
 
@@ -422,8 +422,23 @@
         letter-spacing: 0.08em;
       }
       body.nav-collapsed .nav-brand {
-        padding-inline: 0.25rem;
+        padding: 0.55rem 0 0.9rem;
         text-align: center;
+        font-size: 0;
+      }
+      body.nav-collapsed .nav-brand::before {
+        content: "A";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(255,255,255,0.24);
+        border-radius: var(--radius);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.25rem;
+        color: #fff;
+        background: rgba(255,255,255,0.1);
       }
       body.nav-collapsed .nav-brand span,
       body.nav-collapsed .nav-user,
@@ -432,19 +447,56 @@
       }
       body.nav-collapsed nav a,
       body.nav-collapsed .nav-group summary {
-        font-size: 0;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
         justify-content: center;
-        padding-inline: 0.65rem;
-      }
-      body.nav-collapsed nav a::first-letter,
-      body.nav-collapsed .nav-group summary::first-letter {
-        font-size: 0.82rem;
+        padding: 0.55rem 0.25rem;
+        font-size: 0.66rem;
+        letter-spacing: 0.02em;
+        line-height: 1.05;
+        text-align: center;
+        text-transform: none;
       }
       body.nav-collapsed .nav-group summary::after {
-        margin-left: 0;
+        content: "";
+        margin: 0;
+      }
+      body.nav-collapsed .nav-group {
+        position: relative;
       }
       body.nav-collapsed .nav-submenu {
         display: none;
+      }
+      body.nav-collapsed .nav-group:hover .nav-submenu,
+      body.nav-collapsed .nav-group:focus-within .nav-submenu {
+        display: flex;
+        position: absolute;
+        left: calc(100% + 0.55rem);
+        top: 0;
+        min-width: 220px;
+        margin: 0;
+        padding: 0.35rem;
+        background: #fff;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-md);
+        border-radius: var(--radius);
+      }
+      body.nav-collapsed .nav-group:hover .nav-submenu a,
+      body.nav-collapsed .nav-group:focus-within .nav-submenu a {
+        color: var(--text);
+        justify-content: flex-start;
+        min-height: 36px;
+        padding: 0.65rem 0.75rem;
+        font-size: 0.84rem;
+        text-align: left;
+      }
+      body.nav-collapsed .nav-group:hover .nav-submenu a:hover,
+      body.nav-collapsed .nav-group:hover .nav-submenu a.active,
+      body.nav-collapsed .nav-group:focus-within .nav-submenu a:hover,
+      body.nav-collapsed .nav-group:focus-within .nav-submenu a.active {
+        color: var(--accent);
+        background: var(--accent-light);
       }
       .nav-group {
         position: static;
@@ -580,6 +632,12 @@
       }
       body.nav-collapsed .nav-group[open] .nav-submenu {
         display: none;
+      }
+      body.nav-collapsed .nav-brand {
+        font-size: 1.2rem;
+      }
+      body.nav-collapsed .nav-brand::before {
+        content: none;
       }
 
       .nav-brand {

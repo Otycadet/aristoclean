@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib.auth.signals import user_logged_in
 from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
+from django.core.management import call_command
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase, override_settings
@@ -495,6 +496,47 @@ class InventoryTestCase(TestCase):
         self.assertEqual(batch.lines.get().quantity, Decimal("12.00"))
         self.item.refresh_from_db()
         self.assertEqual(self.item.current_stock, Decimal("8.00"))
+
+    def test_convert_item_unit_command_updates_existing_quantities(self):
+        batch = IssueBatch.objects.create(
+            location=self.location,
+            issued_to="Cleaning Team",
+            issued_by="Store Keeper",
+            issued_at=date(2026, 4, 22),
+            created_by=self.storekeeper,
+        )
+        DistributionLine.objects.create(batch=batch, item=self.item, quantity=Decimal("2.00"))
+        StockAdjustment.objects.create(
+            item=self.item,
+            quantity_delta=Decimal("1.00"),
+            reason=StockAdjustment.REASON_COUNT,
+            adjusted_at=date(2026, 4, 23),
+            created_by=self.manager,
+        )
+        self.item.unit = "packs"
+        self.item.reorder_level = Decimal("5.00")
+        self.item.save(update_fields=["unit", "reorder_level"])
+
+        call_command(
+            "convert_item_unit",
+            str(self.item.pk),
+            "48",
+            "--new-unit",
+            "pieces",
+            "--pack-size",
+            "48",
+            "--apply",
+            verbosity=0,
+        )
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.unit, "pieces")
+        self.assertEqual(self.item.pack_size, Decimal("48.00"))
+        self.assertEqual(self.item.reorder_level, Decimal("240.00"))
+        self.assertEqual(StockEntry.objects.get(item=self.item).quantity, Decimal("960.00"))
+        self.assertEqual(DistributionLine.objects.get(item=self.item).quantity, Decimal("96.00"))
+        self.assertEqual(StockAdjustment.objects.get(item=self.item).quantity_delta, Decimal("48.00"))
+        self.assertEqual(self.item.current_stock, Decimal("912.00"))
 
     def test_superuser_can_open_manage_pages(self):
         request = self.factory.get("/manage/items/")
